@@ -1,73 +1,16 @@
-# Welcome to your Lovable project
-
-## Project info
-
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
-
-## How can I edit this code?
-
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+# RentifyXRentifyX is a web-based application designed to facilitate the search and management of student housing,specifically focusing on Paying Guest (PG) and flat rentals. 
+The system provides a centralized platform for three distinct user roles: Tenants, Landlords, and Administrators.
+# 1. System ArchitectureThe application is built using a decoupled architecture:
+Frontend: Developed using the React library for user interface management.
+Backend: Built with Java (Spring Boot) to handle business logic and database operations.
+Database: Utilizes MySQL for relational data storage including user profiles and property listings.
+# 2. Functional Components
+2.1 Tenant ModuleSearch and Filter: Users can browse available listings based on parameters such as geographical area and price range.Slide-to-Request: A verification gesture implemented to confirm user interest and prevent accidental data submissions.Budget Analysis: A utility that calculates a 40/30/30 income distribution for financial planning.
+2.2 Landlord ModuleListing Management: Tools to add, update, or remove property data from the system.Privacy Controls: Tenant contact information is restricted and only becomes visible after the landlord formally accepts a digital request.
+2.3 Administrative ModuleSystem Oversight: Monitoring of user activities and manual removal of invalid listings.Data Analytics: Visualization of average rent trends and high-demand locations.
+# 3. Technical ImplementationThe system incorporates several computer science concepts to improve performance and security:
+Hashing: Used for identifying duplicate property listings in $O(1)$ time complexity.Max Heaps: Employed in the backend to rank properties based on user-submitted ratings.
+Input Validation: Verification of rental prices against local averages to identify potential fraudulent entries.
+# 4. DevelopmentThe project was developed by MV Studios Japan.
+Lead Developer: Vansh Saxena
+Project URL: rentifyx
