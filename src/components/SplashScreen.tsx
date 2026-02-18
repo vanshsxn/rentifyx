@@ -17,19 +17,16 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
   const [isExiting, setIsExiting] = useState(false);
 
   useEffect(() => {
-    // Total duration: 4 seconds (4000ms)
-    // 3 transitions * 800ms = 2400ms
-    // Final word "Relax" shows for 800ms
-    // Final exit animation = 800ms
-    const wordInterval = 800; 
+    // We stay on each word longer to make it readable
+    const wordInterval = 1000; 
 
     const interval = setInterval(() => {
       setIndex((prev) => {
         if (prev >= words.length - 1) {
           clearInterval(interval);
-          // Start exit slightly after the last word appears
-          setTimeout(() => setIsExiting(true), 700); 
-          setTimeout(onComplete, 1200); 
+          // Give "Relax" a moment of peace before the app loads
+          setTimeout(() => setIsExiting(true), 900); 
+          setTimeout(onComplete, 1500); 
           return prev;
         }
         return prev + 1;
@@ -44,18 +41,15 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
       className="fixed inset-0 z-50 flex items-center justify-center bg-white"
       initial={{ opacity: 1 }}
       animate={{ opacity: isExiting ? 0 : 1 }}
-      transition={{ duration: 0.5 }}
+      transition={{ duration: 0.8, ease: "easeInOut" }}
     >
-      {/* HIGH VISIBILITY SVG FILTER */}
       <svg className="absolute h-0 w-0">
         <defs>
           <filter id="gooey">
-            {/* Reduced from 4 to 3 for much sharper text edges */}
             <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur" />
             <feColorMatrix
               in="blur"
               mode="matrix"
-              // Increased contrast (20) and tighter threshold (-9) for maximum visibility
               values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -9"
               result="gooey"
             />
@@ -68,15 +62,15 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
           <motion.h1
             key={i}
             className={`absolute whitespace-nowrap text-7xl font-black tracking-tighter md:text-9xl ${word.color}`}
-            initial={{ opacity: 0, filter: "blur(5px)" }}
+            initial={{ opacity: 0, filter: "blur(8px)", scale: 0.9 }}
             animate={{ 
               opacity: i === index ? 1 : 0, 
-              filter: i === index ? "blur(0px)" : "blur(5px)",
-              scale: i === index ? 1 : 0.95 // Subtle scale for more "impact"
+              filter: i === index ? "blur(0px)" : "blur(8px)",
+              scale: i === index ? 1 : 1.05 // Outgoing word expands slightly as it melts
             }}
             transition={{ 
-              duration: 0.4, // Faster transition for a 4s total time
-              ease: [0.23, 1, 0.32, 1] // Custom cubic-bezier for "snappy" feel
+              duration: 0.9, // Slower transition duration for a "liquid" feel
+              ease: "easeInOut" 
             }}
           >
             {word.text}
