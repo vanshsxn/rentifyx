@@ -10,8 +10,7 @@ const features = [
 { icon: TrendingUp, title: "Budget Analyzer", desc: "40/30/30 income split calculator." },
 { icon: Lock, title: "Privacy First", desc: "Contact info revealed only on acceptance." },
 { icon: Shield, title: "Fraud Detection", desc: "AI-powered fraud scoring system." },
-];
-const demoProperties = [
+];const demoProperties = [
 {
 id: 1,
 title: "Vansh's PG",
@@ -45,7 +44,8 @@ propertyRef.current.scrollIntoView({ behavior: "smooth" });
 }}
 return (
 <div className="min-h-screen bg-background flex flex-col">
-<div className="flex-1 flex items-center justify-center px-4 pt-20">
+{/*the part which you are seeing is the hero section of my webiste*/}
+<div className="pt-32 pb-20 flex items-center justify-center px-4">
 <div className="text-center max-w-2xl mx-auto space-y-8">
 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="space-y-4">
 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/5 text-primary text-xs font-medium border border-primary/10">
@@ -59,7 +59,8 @@ Find Rent,<br />
 The minimalist platform for tenants, landlords, and administrators. Stress-free rental experience.
 </p>
 </motion.div>
-<motion.div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-12" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2 }}>
+{/*changed the gap verion of expolore now*/}
+<motion.div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-24" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2 }}>
 <button onClick={handleScroll} className="flex items-center gap-2 px-6 py-3 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold transition-all hover:opacity-90 shadow-elevated">
 Browse Properties <ArrowRight className="w-4 h-4" />
 </button>
@@ -69,7 +70,8 @@ Browse Properties <ArrowRight className="w-4 h-4" />
 </motion.div>
 </div>
 </div>
-<motion.div className="container max-w-4xl mx-auto px-4 pb-20" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.4 }}>
+{/*hello nice to see you */}
+<motion.div className="container max-w-4xl mx-auto px-4 pb-20 mt-12" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.4 }}>
 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
 {features.map((item) => {
 const Icon = item.icon;
