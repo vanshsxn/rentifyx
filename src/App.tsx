@@ -11,17 +11,13 @@ import LandlordDashboard from "@/pages/LandlordDashboard";
 import AdminDashboard from "@/pages/AdminDashboard";
 import Layout from "@/components/Layout";
 import NotFound from "./pages/NotFound";
-
 const queryClient = new QueryClient();
-
 const AppContent = () => {
   const [showSplash, setShowSplash] = useState(true);
   const [role, setRole] = useState<"tenant" | "landlord" | "admin">("tenant");
-
   if (showSplash) {
     return <SplashScreen onComplete={() => setShowSplash(false)} />;
   }
-
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
@@ -53,7 +49,6 @@ const AppContent = () => {
     </Routes>
   );
 };
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -65,5 +60,4 @@ const App = () => (
     </TooltipProvider>
   </QueryClientProvider>
 );
-
 export default App;
