@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { properties, tenantRequests, TenantRequest } from "@/data/mockData";
-import { Building2, Edit3, Trash2, Eye, EyeOff, Check, X, AlertTriangle, Mail, Phone } from "lucide-react";
+import { properties, tenantRequests } from "@/data/mockData";
+import { Building2, Edit3, Trash2, Check, X, AlertTriangle, Mail, Phone } from "lucide-react";
+import { toast } from "sonner";
 
 const LandlordDashboard = () => {
   const [requests, setRequests] = useState(tenantRequests);
@@ -8,12 +9,20 @@ const LandlordDashboard = () => {
   const landlordProperties = properties.filter((p) => p.landlordId === "l1");
 
   const handleAccept = (id: string) => {
+    const req = requests.find((r) => r.id === id);
     setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: "accepted" } : r)));
     setRevealedIds((prev) => [...prev, id]);
+    toast.success("Request accepted!", {
+      description: `${req?.tenantName}'s contact details are now visible.`,
+    });
   };
 
   const handleReject = (id: string) => {
+    const req = requests.find((r) => r.id === id);
     setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: "rejected" } : r)));
+    toast("Request rejected", {
+      description: `${req?.tenantName}'s request for ${req?.propertyTitle} was declined.`,
+    });
   };
 
   return (
@@ -23,7 +32,6 @@ const LandlordDashboard = () => {
         <p className="text-sm text-muted-foreground mt-1">Manage your properties and tenant requests.</p>
       </div>
 
-      {/* My Properties */}
       <section className="space-y-4">
         <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
           <Building2 className="w-4 h-4 text-primary" /> My Properties
@@ -49,7 +57,6 @@ const LandlordDashboard = () => {
         </div>
       </section>
 
-      {/* Incoming Requests */}
       <section className="space-y-4">
         <h2 className="text-lg font-semibold text-foreground">Incoming Requests</h2>
         <div className="grid gap-3">
@@ -83,7 +90,6 @@ const LandlordDashboard = () => {
                   </div>
                 </div>
 
-                {/* Contact info */}
                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Mail className="w-3 h-3" />
@@ -95,18 +101,17 @@ const LandlordDashboard = () => {
                   </span>
                 </div>
 
-                {/* Actions */}
                 {r.status === "pending" && (
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleAccept(r.id)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium gradient-primary text-primary-foreground transition-all hover:opacity-90"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium gradient-primary text-primary-foreground transition-all hover:opacity-90 active:scale-[0.97]"
                     >
                       <Check className="w-3.5 h-3.5" /> Accept & Reveal
                     </button>
                     <button
                       onClick={() => handleReject(r.id)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-secondary text-muted-foreground hover:text-destructive transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-secondary text-muted-foreground hover:text-destructive transition-colors active:scale-[0.97]"
                     >
                       <X className="w-3.5 h-3.5" /> Reject
                     </button>

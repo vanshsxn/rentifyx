@@ -1,17 +1,21 @@
 import { Property } from "@/data/mockData";
-import { Star, MapPin, Bed, Bath } from "lucide-react";
+import { Star, MapPin, Bed, Bath, Maximize } from "lucide-react";
 
 interface PropertyCardProps {
   property: Property;
   isCompare?: boolean;
   onCompareToggle?: (id: string) => void;
   onInterest?: (property: Property) => void;
+  onViewDetail?: (property: Property) => void;
   compareDisabled?: boolean;
 }
 
-const PropertyCard = ({ property, isCompare, onCompareToggle, onInterest, compareDisabled }: PropertyCardProps) => {
+const PropertyCard = ({ property, isCompare, onCompareToggle, onInterest, onViewDetail, compareDisabled }: PropertyCardProps) => {
   return (
-    <div className="bg-card rounded-lg border border-border overflow-hidden transition-all duration-300 hover:card-shadow-hover card-shadow group">
+    <div
+      className="bg-card rounded-lg border border-border overflow-hidden transition-all duration-300 hover:card-shadow-hover card-shadow group cursor-pointer"
+      onClick={() => onViewDetail?.(property)}
+    >
       <div className="relative overflow-hidden aspect-[4/3]">
         <img
           src={property.image}
@@ -22,6 +26,12 @@ const PropertyCard = ({ property, isCompare, onCompareToggle, onInterest, compar
         <div className="absolute top-3 right-3 bg-card/90 backdrop-blur-sm text-foreground text-xs font-semibold px-2.5 py-1 rounded-md">
           {property.listed}
         </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); }}
+          className="absolute bottom-3 right-3 flex items-center gap-1 px-2 py-1 rounded-md bg-card/90 backdrop-blur-sm text-xs font-semibold text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+        >
+          <Maximize className="w-3 h-3" /> VR
+        </button>
       </div>
       <div className="p-4 space-y-3">
         <div>
@@ -45,7 +55,7 @@ const PropertyCard = ({ property, isCompare, onCompareToggle, onInterest, compar
           <span className="ml-auto">{property.distance}</span>
         </div>
 
-        <div className="flex items-center gap-2 pt-1">
+        <div className="flex items-center gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
           {onCompareToggle && (
             <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
               <input
