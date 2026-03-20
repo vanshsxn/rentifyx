@@ -1,12 +1,16 @@
 import { useState } from "react";
 import { properties, tenantRequests } from "@/data/mockData";
-import { Building2, Edit3, Trash2, Check, X, AlertTriangle, Mail, Phone } from "lucide-react";
+import { Building2, Edit3, Trash2, Check, X, AlertTriangle, Mail, Phone, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const LandlordDashboard = () => {
+  const { user } = useAuth();
   const [requests, setRequests] = useState(tenantRequests);
   const [revealedIds, setRevealedIds] = useState<string[]>([]);
-  const landlordProperties = properties.filter((p) => p.landlordId === "l1");
+
+  // In production this would come from DB filtered by user. For now, show empty for new users.
+  const [myProperties] = useState<typeof properties>([]);
 
   const handleAccept = (id: string) => {
     const req = requests.find((r) => r.id === id);
@@ -27,99 +31,62 @@ const LandlordDashboard = () => {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Landlord Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">Manage your properties and tenant requests.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Landlord Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Welcome, {user?.email?.split("@")[0] ?? "Landlord"}
+          </p>
+        </div>
       </div>
 
+      {/* My Properties - Empty State */}
       <section className="space-y-4">
         <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
           <Building2 className="w-4 h-4 text-primary" /> My Properties
         </h2>
-        <div className="grid gap-3">
-          {landlordProperties.map((p) => (
-            <div key={p.id} className="flex items-center gap-4 bg-card border border-border rounded-lg p-4 card-shadow">
-              <img src={p.image} alt={p.title} className="w-16 h-16 rounded-lg object-cover flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-semibold text-foreground truncate">{p.title}</h3>
-                <p className="text-xs text-muted-foreground">{p.area} · ¥{p.rent.toLocaleString()}/mo</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button className="p-2 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground">
-                  <Edit3 className="w-4 h-4" />
-                </button>
-                <button className="p-2 rounded-md hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
+
+        {myProperties.length === 0 ? (
+          <div className="bg-card border border-border border-dashed rounded-xl p-10 text-center space-y-3">
+            <div className="w-12 h-12 rounded-full bg-primary/5 flex items-center justify-center mx-auto">
+              <Plus className="w-6 h-6 text-primary" />
             </div>
-          ))}
-        </div>
+            <h3 className="text-sm font-semibold text-foreground">No properties yet</h3>
+            <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+              Once the backend is connected, you'll be able to list your properties here and manage tenant requests.
+            </p>
+            <button className="px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-xs font-semibold transition-opacity hover:opacity-90 active:scale-[0.98]">
+              Add Your First Property
+            </button>
+          </div>
+        ) : (
+          <div className="grid gap-3">
+            {myProperties.map((p) => (
+              <div key={p.id} className="flex items-center gap-4 bg-card border border-border rounded-lg p-4 card-shadow">
+                <img src={p.image} alt={p.title} className="w-16 h-16 rounded-lg object-cover flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-semibold text-foreground truncate">{p.title}</h3>
+                  <p className="text-xs text-muted-foreground">{p.area} · ¥{p.rent.toLocaleString()}/mo</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button className="p-2 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground">
+                    <Edit3 className="w-4 h-4" />
+                  </button>
+                  <button className="p-2 rounded-md hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
+      {/* Incoming Requests - Empty */}
       <section className="space-y-4">
         <h2 className="text-lg font-semibold text-foreground">Incoming Requests</h2>
-        <div className="grid gap-3">
-          {requests.map((r) => {
-            const isRevealed = revealedIds.includes(r.id);
-            return (
-              <div key={r.id} className="bg-card border border-border rounded-lg p-4 card-shadow space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center text-primary-foreground text-sm font-semibold">
-                      {r.tenantName.charAt(0)}
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{r.tenantName}</p>
-                      <p className="text-xs text-muted-foreground">{r.propertyTitle} · {r.date}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {r.urgent && (
-                      <span className="flex items-center gap-1 text-xs font-medium text-warning bg-warning/10 px-2 py-0.5 rounded-md">
-                        <AlertTriangle className="w-3 h-3" /> Urgent
-                      </span>
-                    )}
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${
-                      r.status === "accepted" ? "bg-success/10 text-success"
-                      : r.status === "rejected" ? "bg-destructive/10 text-destructive"
-                      : "bg-secondary text-muted-foreground"
-                    }`}>
-                      {r.status.charAt(0).toUpperCase() + r.status.slice(1)}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Mail className="w-3 h-3" />
-                    {isRevealed ? r.tenantEmail : "••••••@••••.com"}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Phone className="w-3 h-3" />
-                    {isRevealed ? r.tenantPhone : "+81 ••-••••-••••"}
-                  </span>
-                </div>
-
-                {r.status === "pending" && (
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleAccept(r.id)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium gradient-primary text-primary-foreground transition-all hover:opacity-90 active:scale-[0.97]"
-                    >
-                      <Check className="w-3.5 h-3.5" /> Accept & Reveal
-                    </button>
-                    <button
-                      onClick={() => handleReject(r.id)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-secondary text-muted-foreground hover:text-destructive transition-colors active:scale-[0.97]"
-                    >
-                      <X className="w-3.5 h-3.5" /> Reject
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+        <div className="bg-card border border-border border-dashed rounded-xl p-10 text-center">
+          <p className="text-sm text-muted-foreground">No incoming requests yet. They'll appear here when tenants express interest.</p>
         </div>
       </section>
     </div>
