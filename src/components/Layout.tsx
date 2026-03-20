@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Home, Building2, Shield, Search } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface LayoutProps {
   children: ReactNode;
@@ -19,7 +20,6 @@ const Layout = ({ children, role, onRoleChange }: LayoutProps) => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      {/* Navbar */}
       <header className="sticky top-0 z-40 bg-card/80 backdrop-blur-lg border-b border-border">
         <div className="container max-w-6xl mx-auto flex items-center justify-between h-16 px-4">
           <Link to="/" className="flex items-center gap-2">
@@ -27,7 +27,6 @@ const Layout = ({ children, role, onRoleChange }: LayoutProps) => {
             <span className="text-lg font-bold tracking-tight text-foreground">RentifyX</span>
           </Link>
 
-          {/* Role Switcher */}
           <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
             {roles.map((r) => {
               const Icon = r.icon;
@@ -52,12 +51,20 @@ const Layout = ({ children, role, onRoleChange }: LayoutProps) => {
         </div>
       </header>
 
-      {/* Main content */}
       <main className="flex-1 container max-w-6xl mx-auto px-4 py-8">
-        {children}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 12, filter: "blur(4px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: -8, filter: "blur(4px)" }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+          >
+            {children}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
-      {/* Footer */}
       <footer className="py-6 text-center">
         <p className="text-xs text-muted-foreground tracking-wide">Made by MV Studios Japan.</p>
       </footer>
