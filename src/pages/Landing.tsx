@@ -2,35 +2,31 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, Building2, Sparkles, Star, MapPin, Maximize, Wallet, Home, Users, TrendingDown } from "lucide-react";
 import { Property } from "@/data/mockData";
-
 const Landing = () => {
   const navigate = useNavigate();
-
   const quickFilters = [
     { icon: Wallet, label: "Budget PGs", desc: "Under ₹5,000/mo", action: () => navigate("/properties?budget=Under+₹5,000") },
     { icon: Home, label: "Furnished", desc: "Ready to move in", action: () => navigate("/properties") },
     { icon: Users, label: "Shared Rooms", desc: "Split the cost", action: () => navigate("/properties") },
     { icon: TrendingDown, label: "Best Deals", desc: "Top rated & affordable", action: () => navigate("/properties") },
   ];
-
   const demoProperties: Property[] = [
     {
-      id: "demo1", title: "Vansh's PG", address: "Indira Nagar, Near Metro", area: "Indira Nagar",
+      id: "demo1", title: "Vansh's PG", address: "Clement Town Near Marina Hostel", area: "Clement Town Dehradun",
       rent: 8500, rating: 4.8, image: "https://i.pinimg.com/736x/20/ae/95/20ae95fbe2c97934e0d3a733b150a403.jpg",
       bedrooms: 1, bathrooms: 1, sqft: 350, features: ["Wi-Fi", "Food"], landlordId: "l1", distance: "5 min walk", listed: "2 days ago",
     },
     {
-      id: "demo2", title: "HAHA PG RENT", address: "Gomti Nagar, Fully Furnished", area: "Gomti Nagar",
+      id: "demo2", title: "HAHA PG RENT", address: "Near SC Bose Hostel, Fully Furnished", area: "Clement Town Dehradun",
       rent: 1000, rating: 4.5, image: "https://th.bing.com/th/id/OIP.LHgJIlJhOTi0PDPo1VhAyQHaFj?o=7&cb=defcache2&rm=3&defcache=1&rs=1&pid=ImgDetMain&o=7&rm=3",
       bedrooms: 1, bathrooms: 1, sqft: 300, features: ["AC", "Parking"], landlordId: "l2", distance: "3 min walk", listed: "1 week ago",
     },
     {
-      id: "demo3", title: "Anshuman's homes", address: "Hazratganj, Shared Room", area: "Hazratganj",
+      id: "demo3", title: "Anshuman's homes", address: "Near Graphic Era Demmed to Be University, Shared Room", area: "Clement Town Dehradun",
       rent: 6000, rating: 4.2, image: "https://tse1.mm.bing.net/th/id/OIP.ewl35_kvZqZzn5ttlL0qWQHaFj?cb=defcache2&defcache=1&rs=1&pid=ImgDetMain&o=7&rm=3",
       bedrooms: 1, bathrooms: 1, sqft: 280, features: ["Cleaning"], landlordId: "l3", distance: "7 min walk", listed: "3 days ago",
     },
   ];
-
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Hero with Video */}
@@ -40,7 +36,7 @@ const Landing = () => {
           muted
           loop
           playsInline
-          className="absolute inset-0 w-full h-full object-cover opacity-70"
+          className="absolute inset-0 w-full h-full object-cover opacity-100"
           src="/hero-video.mp4"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-background/20 via-background/40 to-background" />
@@ -142,5 +138,4 @@ const Landing = () => {
     </div>
   );
 };
-
 export default Landing;
