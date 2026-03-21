@@ -68,10 +68,8 @@ const Landing = () => {
     },
   ];
 
-  function handleScroll() {
-    if (propertyRef.current) {
-      propertyRef.current.scrollIntoView({ behavior: "smooth" });
-    }
+  function handleBrowse() {
+    navigate("/properties");
   }
 
   return (
