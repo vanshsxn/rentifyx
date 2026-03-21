@@ -6,7 +6,6 @@ import { ArrowRight, Search, Building2, Shield, Sparkles, TrendingUp, Lock, Star
 const Landing = () => {
   const navigate = useNavigate();
   const propertyRef = useRef<HTMLDivElement>(null);
-  const [detailProperty, setDetailProperty] = useState<Property | null>(null);
 
   const features = [
     { icon: Search, title: "Smart Search", desc: "Filter by area, price, and more." },
