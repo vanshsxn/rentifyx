@@ -14,7 +14,7 @@ const Landing = () => {
     { icon: Shield, title: "Fraud Detection", desc: "AI-powered fraud scoring system." },
   ];
 
-  const demoProperties: Property[] = [
+  const demoProperties = [
     {
       id: "demo1",
       title: "Vansh's PG",
