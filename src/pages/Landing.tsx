@@ -1,83 +1,50 @@
-import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, Search, Building2, Shield, Sparkles, TrendingUp, Lock, Star, MapPin, Maximize } from "lucide-react";
-import PropertyDetailModal from "@/components/PropertyDetailModal";
+import { ArrowRight, Building2, Sparkles, Star, MapPin, Maximize, Wallet, Home, Users, TrendingDown } from "lucide-react";
 import { Property } from "@/data/mockData";
 
 const Landing = () => {
   const navigate = useNavigate();
-  const propertyRef = useRef<HTMLDivElement>(null);
-  const [detailProperty, setDetailProperty] = useState<Property | null>(null);
 
-  const features = [
-    { icon: Search, title: "Smart Search", desc: "Filter by area, price, and more." },
-    { icon: TrendingUp, title: "Budget Analyzer", desc: "40/30/30 income split calculator." },
-    { icon: Lock, title: "Privacy First", desc: "Contact info revealed only on acceptance." },
-    { icon: Shield, title: "Fraud Detection", desc: "AI-powered fraud scoring system." },
+  const quickFilters = [
+    { icon: Wallet, label: "Budget PGs", desc: "Under ₹5,000/mo", action: () => navigate("/properties?budget=Under+₹5,000") },
+    { icon: Home, label: "Furnished", desc: "Ready to move in", action: () => navigate("/properties") },
+    { icon: Users, label: "Shared Rooms", desc: "Split the cost", action: () => navigate("/properties") },
+    { icon: TrendingDown, label: "Best Deals", desc: "Top rated & affordable", action: () => navigate("/properties") },
   ];
 
   const demoProperties: Property[] = [
     {
-      id: "demo1",
-      title: "Vansh's PG",
-      address: "Indira Nagar, Near Metro",
-      area: "Indira Nagar",
-      rent: 8500,
-      rating: 4.8,
-      image: "https://i.pinimg.com/736x/20/ae/95/20ae95fbe2c97934e0d3a733b150a403.jpg",
-      bedrooms: 1,
-      bathrooms: 1,
-      sqft: 350,
-      features: ["Wi-Fi", "Food"],
-      landlordId: "l1",
-      distance: "5 min walk",
-      listed: "2 days ago",
+      id: "demo1", title: "Vansh's PG", address: "Indira Nagar, Near Metro", area: "Indira Nagar",
+      rent: 8500, rating: 4.8, image: "https://i.pinimg.com/736x/20/ae/95/20ae95fbe2c97934e0d3a733b150a403.jpg",
+      bedrooms: 1, bathrooms: 1, sqft: 350, features: ["Wi-Fi", "Food"], landlordId: "l1", distance: "5 min walk", listed: "2 days ago",
     },
     {
-      id: "demo2",
-      title: "HAHA PG RENT",
-      address: "Gomti Nagar, Fully Furnished",
-      area: "Gomti Nagar",
-      rent: 1000,
-      rating: 4.5,
-      image: "https://th.bing.com/th/id/OIP.LHgJIlJhOTi0PDPo1VhAyQHaFj?o=7&cb=defcache2&rm=3&defcache=1&rs=1&pid=ImgDetMain&o=7&rm=3",
-      bedrooms: 1,
-      bathrooms: 1,
-      sqft: 300,
-      features: ["AC", "Parking"],
-      landlordId: "l2",
-      distance: "3 min walk",
-      listed: "1 week ago",
+      id: "demo2", title: "HAHA PG RENT", address: "Gomti Nagar, Fully Furnished", area: "Gomti Nagar",
+      rent: 1000, rating: 4.5, image: "https://th.bing.com/th/id/OIP.LHgJIlJhOTi0PDPo1VhAyQHaFj?o=7&cb=defcache2&rm=3&defcache=1&rs=1&pid=ImgDetMain&o=7&rm=3",
+      bedrooms: 1, bathrooms: 1, sqft: 300, features: ["AC", "Parking"], landlordId: "l2", distance: "3 min walk", listed: "1 week ago",
     },
     {
-      id: "demo3",
-      title: "Anshuman's homes",
-      address: "Hazratganj, Shared Room",
-      area: "Hazratganj",
-      rent: 6000,
-      rating: 4.2,
-      image: "https://tse1.mm.bing.net/th/id/OIP.ewl35_kvZqZzn5ttlL0qWQHaFj?cb=defcache2&defcache=1&rs=1&pid=ImgDetMain&o=7&rm=3",
-      bedrooms: 1,
-      bathrooms: 1,
-      sqft: 280,
-      features: ["Cleaning"],
-      landlordId: "l3",
-      distance: "7 min walk",
-      listed: "3 days ago",
+      id: "demo3", title: "Anshuman's homes", address: "Hazratganj, Shared Room", area: "Hazratganj",
+      rent: 6000, rating: 4.2, image: "https://tse1.mm.bing.net/th/id/OIP.ewl35_kvZqZzn5ttlL0qWQHaFj?cb=defcache2&defcache=1&rs=1&pid=ImgDetMain&o=7&rm=3",
+      bedrooms: 1, bathrooms: 1, sqft: 280, features: ["Cleaning"], landlordId: "l3", distance: "7 min walk", listed: "3 days ago",
     },
   ];
 
-  function handleScroll() {
-    if (propertyRef.current) {
-      propertyRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }
-
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <div className="pt-32 pb-20 flex items-center justify-center px-4">
-        <div className="text-center max-w-2xl mx-auto space-y-8">
+      {/* Hero with Video */}
+      <div className="relative pt-24 pb-20 flex items-center justify-center px-4 overflow-hidden">
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover opacity-20"
+          src="/hero-video.mp4"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/80 to-background" />
+        <div className="text-center max-w-2xl mx-auto space-y-8 relative z-10">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="space-y-4">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/5 text-primary text-xs font-medium border border-primary/10">
               <Sparkles className="w-3.5 h-3.5" /> Rental made simple
@@ -90,8 +57,8 @@ const Landing = () => {
               The minimalist platform for tenants, landlords, and administrators. Stress-free rental experience.
             </p>
           </motion.div>
-          <motion.div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-24" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2 }}>
-            <button onClick={handleScroll} className="flex items-center gap-2 px-6 py-3 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold transition-all hover:opacity-90 shadow-elevated">
+          <motion.div className="flex flex-col sm:flex-row items-center justify-center gap-3" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2 }}>
+            <button onClick={() => navigate("/properties")} className="flex items-center gap-2 px-6 py-3 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold transition-all hover:opacity-90 shadow-elevated">
               Browse Properties <ArrowRight className="w-4 h-4" />
             </button>
             <button onClick={() => navigate("/auth")} className="flex items-center gap-2 px-6 py-3 rounded-lg bg-card border border-border text-foreground text-sm font-medium transition-all hover:bg-secondary card-shadow">
@@ -101,24 +68,30 @@ const Landing = () => {
         </div>
       </div>
 
-      <motion.div className="container max-w-4xl mx-auto px-4 pb-20 mt-12" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.4 }}>
+      {/* Quick Filter Buttons */}
+      <motion.div className="container max-w-4xl mx-auto px-4 pb-20" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.4 }}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {features.map((item) => {
+          {quickFilters.map((item) => {
             const Icon = item.icon;
             return (
-              <div key={item.title} className="bg-card border border-border rounded-xl p-5 card-shadow text-center space-y-3 hover:border-primary/20 transition-colors">
-                <div className="w-10 h-10 rounded-lg bg-primary/5 flex items-center justify-center mx-auto">
+              <button
+                key={item.label}
+                onClick={item.action}
+                className="bg-card border border-border rounded-xl p-5 card-shadow text-center space-y-3 hover:border-primary/30 hover:shadow-elevated transition-all active:scale-[0.97] group"
+              >
+                <div className="w-10 h-10 rounded-lg bg-primary/5 flex items-center justify-center mx-auto group-hover:bg-primary/10 transition-colors">
                   <Icon className="w-5 h-5 text-primary" />
                 </div>
-                <h3 className="text-sm font-semibold text-foreground">{item.title}</h3>
+                <h3 className="text-sm font-semibold text-foreground">{item.label}</h3>
                 <p className="text-[11px] text-muted-foreground leading-tight">{item.desc}</p>
-              </div>
+              </button>
             );
           })}
         </div>
       </motion.div>
 
-      <section ref={propertyRef} className="container max-w-6xl mx-auto px-4 py-16 space-y-10">
+      {/* Featured Listings */}
+      <section className="container max-w-6xl mx-auto px-4 py-16 space-y-10">
         <div className="text-center space-y-2">
           <h2 className="text-3xl font-bold tracking-tight text-foreground">Featured Listings</h2>
           <p className="text-muted-foreground">Hand-picked properties just for you</p>
@@ -129,19 +102,16 @@ const Landing = () => {
               key={p.id}
               whileHover={{ y: -5 }}
               className="bg-card border border-border rounded-2xl overflow-hidden card-shadow group cursor-pointer"
-              onClick={() => setDetailProperty(p)}
+              onClick={() => navigate(`/property/${p.id}`)}
             >
               <div className="relative h-48 overflow-hidden">
-                <img src={p.image} alt={p.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                <img src={p.image} alt={p.title} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                 <div className="absolute top-3 right-3 bg-card/90 backdrop-blur px-2 py-1 rounded-md text-xs font-bold text-primary shadow-sm">
                   ₹{p.rent.toLocaleString()}/mo
                 </div>
-                <button
-                  onClick={(e) => { e.stopPropagation(); setDetailProperty(p); }}
-                  className="absolute bottom-3 right-3 flex items-center gap-1 px-2 py-1 rounded-md bg-card/90 backdrop-blur-sm text-xs font-semibold text-primary opacity-0 group-hover:opacity-100 transition-opacity"
-                >
+                <div className="absolute bottom-3 right-3 flex items-center gap-1 px-2 py-1 rounded-md bg-card/90 backdrop-blur-sm text-xs font-semibold text-primary opacity-0 group-hover:opacity-100 transition-opacity">
                   <Maximize className="w-3 h-3" /> VR
-                </button>
+                </div>
               </div>
               <div className="p-5 space-y-3">
                 <div className="flex justify-between items-start">
@@ -155,9 +125,7 @@ const Landing = () => {
                 </div>
                 <div className="flex gap-2 pt-1">
                   {p.features.map((t) => (
-                    <span key={t} className="text-[10px] px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground font-medium">
-                      {t}
-                    </span>
+                    <span key={t} className="text-[10px] px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground font-medium">{t}</span>
                   ))}
                 </div>
               </div>
@@ -165,13 +133,6 @@ const Landing = () => {
           ))}
         </div>
       </section>
-
-      {/* Property Detail Modal */}
-      <PropertyDetailModal
-        property={detailProperty}
-        open={!!detailProperty}
-        onClose={() => setDetailProperty(null)}
-      />
 
       <footer className="py-10 border-t border-border mt-auto">
         <p className="text-xs text-muted-foreground tracking-wide text-center">
