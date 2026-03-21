@@ -89,7 +89,7 @@ const Landing = () => {
             </p>
           </motion.div>
           <motion.div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-24" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2 }}>
-            <button onClick={handleScroll} className="flex items-center gap-2 px-6 py-3 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold transition-all hover:opacity-90 shadow-elevated">
+            <button onClick={handleBrowse} className="flex items-center gap-2 px-6 py-3 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold transition-all hover:opacity-90 shadow-elevated">
               Browse Properties <ArrowRight className="w-4 h-4" />
             </button>
             <button onClick={() => navigate("/auth")} className="flex items-center gap-2 px-6 py-3 rounded-lg bg-card border border-border text-foreground text-sm font-medium transition-all hover:bg-secondary card-shadow">
