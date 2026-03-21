@@ -1,11 +1,14 @@
-import { useRef } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, Search, Building2, Shield, Sparkles, TrendingUp, Lock, Star, MapPin, Maximize } from "lucide-react";
+import PropertyDetailModal from "@/components/PropertyDetailModal";
+import { Property } from "@/data/mockData";
 
 const Landing = () => {
   const navigate = useNavigate();
   const propertyRef = useRef<HTMLDivElement>(null);
+  const [detailProperty, setDetailProperty] = useState<Property | null>(null);
 
   const features = [
     { icon: Search, title: "Smart Search", desc: "Filter by area, price, and more." },
@@ -14,7 +17,7 @@ const Landing = () => {
     { icon: Shield, title: "Fraud Detection", desc: "AI-powered fraud scoring system." },
   ];
 
-  const demoProperties = [
+  const demoProperties: Property[] = [
     {
       id: "demo1",
       title: "Vansh's PG",
@@ -65,8 +68,10 @@ const Landing = () => {
     },
   ];
 
-  function handleBrowse() {
-    navigate("/properties");
+  function handleScroll() {
+    if (propertyRef.current) {
+      propertyRef.current.scrollIntoView({ behavior: "smooth" });
+    }
   }
 
   return (
@@ -86,7 +91,7 @@ const Landing = () => {
             </p>
           </motion.div>
           <motion.div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-24" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2 }}>
-            <button onClick={handleBrowse} className="flex items-center gap-2 px-6 py-3 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold transition-all hover:opacity-90 shadow-elevated">
+            <button onClick={handleScroll} className="flex items-center gap-2 px-6 py-3 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold transition-all hover:opacity-90 shadow-elevated">
               Browse Properties <ArrowRight className="w-4 h-4" />
             </button>
             <button onClick={() => navigate("/auth")} className="flex items-center gap-2 px-6 py-3 rounded-lg bg-card border border-border text-foreground text-sm font-medium transition-all hover:bg-secondary card-shadow">
@@ -124,7 +129,7 @@ const Landing = () => {
               key={p.id}
               whileHover={{ y: -5 }}
               className="bg-card border border-border rounded-2xl overflow-hidden card-shadow group cursor-pointer"
-              onClick={() => navigate(`/property/${p.id}`)}
+              onClick={() => setDetailProperty(p)}
             >
               <div className="relative h-48 overflow-hidden">
                 <img src={p.image} alt={p.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
@@ -132,10 +137,10 @@ const Landing = () => {
                   ₹{p.rent.toLocaleString()}/mo
                 </div>
                 <button
-                  onClick={(e) => { e.stopPropagation(); navigate(`/property/${p.id}`); }}
+                  onClick={(e) => { e.stopPropagation(); setDetailProperty(p); }}
                   className="absolute bottom-3 right-3 flex items-center gap-1 px-2 py-1 rounded-md bg-card/90 backdrop-blur-sm text-xs font-semibold text-primary opacity-0 group-hover:opacity-100 transition-opacity"
                 >
-                  <Maximize className="w-3 h-3" /> View
+                  <Maximize className="w-3 h-3" /> VR
                 </button>
               </div>
               <div className="p-5 space-y-3">
@@ -161,6 +166,12 @@ const Landing = () => {
         </div>
       </section>
 
+      {/* Property Detail Modal */}
+      <PropertyDetailModal
+        property={detailProperty}
+        open={!!detailProperty}
+        onClose={() => setDetailProperty(null)}
+      />
 
       <footer className="py-10 border-t border-border mt-auto">
         <p className="text-xs text-muted-foreground tracking-wide text-center">
