@@ -39,7 +39,7 @@ const Landing = () => {
           className="absolute inset-0 w-full h-full object-cover opacity-100"
           src="/hero-video.mp4"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/20 via-background/40 to-background" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/10 via-background/20 to-background" />
         <div className="text-center max-w-2xl mx-auto space-y-8 relative z-10">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="space-y-4">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/5 text-primary text-xs font-medium border border-primary/10">
