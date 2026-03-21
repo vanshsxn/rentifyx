@@ -50,9 +50,9 @@ const Landing = () => {
 
         <div className="text-center max-w-2xl mx-auto space-y-8 relative z-10">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20 backdrop-blur-md">
-              <Sparkles className="w-3.5 h-3.5" /> Rental made simple
-            </div>
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary text-white text-xs font-bold shadow-lg shadow-primary/20 relative z-20">
+  <Sparkles className="w-3.5 h-3.5" /> Rental made simple
+</div>
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white drop-shadow-lg leading-[1.1]">
               Find Rent,<br />
               <span className="text-primary-foreground bg-primary px-4 py-1 rounded-lg inline-block mt-2">Relax.</span>
