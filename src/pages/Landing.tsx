@@ -1,9 +1,7 @@
-import { useState, useRef } from "react";
+import { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, Search, Building2, Shield, Sparkles, TrendingUp, Lock, Star, MapPin, Maximize } from "lucide-react";
-import PropertyDetailModal from "@/components/PropertyDetailModal";
-import { Property } from "@/data/mockData";
 
 const Landing = () => {
   const navigate = useNavigate();
