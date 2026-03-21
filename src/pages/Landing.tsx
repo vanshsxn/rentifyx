@@ -161,12 +161,6 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Property Detail Modal */}
-      <PropertyDetailModal
-        property={detailProperty}
-        open={!!detailProperty}
-        onClose={() => setDetailProperty(null)}
-      />
 
       <footer className="py-10 border-t border-border mt-auto">
         <p className="text-xs text-muted-foreground tracking-wide text-center">
