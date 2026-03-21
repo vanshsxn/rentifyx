@@ -8,7 +8,8 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import SplashScreen from "@/components/SplashScreen";
 import DevToolsBlocker from "@/components/DevToolsBlocker";
-import BoxLoader from "@/components/BoxLoader";
+// Removed BoxLoader import
+import { Loader2 } from "lucide-react"; 
 
 // Lazy load pages for faster initial load
 const Landing = lazy(() => import("@/pages/Landing"));
@@ -23,9 +24,11 @@ const NotFound = lazy(() => import("@/pages/NotFound"));
 
 const queryClient = new QueryClient();
 
+// Clean, Minimalist Page Loader Replacement
 const PageLoader = () => (
-  <div className="min-h-screen flex items-center justify-center bg-background">
-    <BoxLoader />
+  <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
+    <Loader2 className="w-10 h-10 text-primary animate-spin opacity-80" />
+    <p className="text-sm font-medium text-muted-foreground animate-pulse">Loading RentHelp...</p>
   </div>
 );
 
@@ -43,6 +46,7 @@ const AppContent = () => {
   const [role, setRole] = useState<"tenant" | "landlord" | "admin">("tenant");
 
   if (showSplash) {
+    // Note: Make sure to check SplashScreen.tsx and remove the BoxLoader from there too
     return <SplashScreen onComplete={() => setShowSplash(false)} />;
   }
 
