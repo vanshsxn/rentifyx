@@ -135,10 +135,10 @@ const Landing = () => {
                   ₹{p.rent.toLocaleString()}/mo
                 </div>
                 <button
-                  onClick={(e) => { e.stopPropagation(); setDetailProperty(p); }}
+                  onClick={(e) => { e.stopPropagation(); navigate(`/property/${p.id}`); }}
                   className="absolute bottom-3 right-3 flex items-center gap-1 px-2 py-1 rounded-md bg-card/90 backdrop-blur-sm text-xs font-semibold text-primary opacity-0 group-hover:opacity-100 transition-opacity"
                 >
-                  <Maximize className="w-3 h-3" /> VR
+                  <Maximize className="w-3 h-3" /> View
                 </button>
               </div>
               <div className="p-5 space-y-3">

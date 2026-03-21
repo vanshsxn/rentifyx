@@ -6,9 +6,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import SplashScreen from "@/components/SplashScreen";
 import DevToolsBlocker from "@/components/DevToolsBlocker";
 import Landing from "@/pages/Landing";
+import Properties from "@/pages/Properties";
+import PropertyDetail from "@/pages/PropertyDetail";
 import TenantDashboard from "@/pages/TenantDashboard";
 import LandlordDashboard from "@/pages/LandlordDashboard";
 import AdminDashboard from "@/pages/AdminDashboard";
@@ -37,17 +38,14 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const AppContent = () => {
-  const [showSplash, setShowSplash] = useState(true);
   const [role, setRole] = useState<"tenant" | "landlord" | "admin">("tenant");
-
-  if (showSplash) {
-    return <SplashScreen onComplete={() => setShowSplash(false)} />;
-  }
 
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/auth" element={<Auth />} />
+      <Route path="/properties" element={<Properties />} />
+      <Route path="/property/:id" element={<PropertyDetail />} />
       <Route
         path="/tenant"
         element={
