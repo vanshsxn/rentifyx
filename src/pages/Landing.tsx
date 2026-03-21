@@ -127,7 +127,7 @@ const Landing = () => {
               key={p.id}
               whileHover={{ y: -5 }}
               className="bg-card border border-border rounded-2xl overflow-hidden card-shadow group cursor-pointer"
-              onClick={() => setDetailProperty(p)}
+              onClick={() => navigate(`/property/${p.id}`)}
             >
               <div className="relative h-48 overflow-hidden">
                 <img src={p.image} alt={p.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
