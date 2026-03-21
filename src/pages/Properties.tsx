@@ -103,7 +103,7 @@ const Properties = () => {
               <div className="p-4 space-y-3">
                 <div className="flex justify-between items-start">
                   <h3 className="font-bold text-foreground">{p.title}</h3>
-                  <div className="flex items-center gap-1 text-amber-500 text-sm font-bold">
+                  <div className="flex items-center gap-1 text-warning text-sm font-bold">
                     <Star className="w-3.5 h-3.5 fill-current" /> {p.rating}
                   </div>
                 </div>

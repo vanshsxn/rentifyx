@@ -193,7 +193,7 @@ const PropertyDetail = () => {
                   ¥{property.rent.toLocaleString()}
                   <span className="text-sm font-normal text-muted-foreground">/mo</span>
                 </span>
-                <span className="flex items-center gap-1 text-sm text-amber-500 font-bold">
+                <span className="flex items-center gap-1 text-sm text-warning font-bold">
                   <Star className="w-4 h-4 fill-current" /> {property.rating}
                 </span>
                 <span className="text-xs text-muted-foreground bg-secondary px-2 py-1 rounded-md">
