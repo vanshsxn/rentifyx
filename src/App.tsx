@@ -8,8 +8,8 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import SplashScreen from "@/components/SplashScreen";
 import DevToolsBlocker from "@/components/DevToolsBlocker";
-// Removed BoxLoader import
-import { Loader2 } from "lucide-react"; 
+import MobileNav from "@/components/MobileNav";
+import { Loader2 } from "lucide-react";
 
 // Lazy load pages for faster initial load
 const Landing = lazy(() => import("@/pages/Landing"));
