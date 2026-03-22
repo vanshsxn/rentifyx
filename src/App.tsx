@@ -60,9 +60,11 @@ const AppContent = () => {
         <Route
           path="/tenant"
           element={
-            <Layout role={role} onRoleChange={setRole}>
-              <TenantDashboard />
-            </Layout>
+            <ProtectedRoute>
+              <Layout role={role} onRoleChange={setRole}>
+                <TenantDashboard />
+              </Layout>
+            </ProtectedRoute>
           }
         />
         <Route
@@ -78,13 +80,16 @@ const AppContent = () => {
         <Route
           path="/admin"
           element={
-            <Layout role={role} onRoleChange={setRole}>
-              <AdminDashboard />
-            </Layout>
+            <ProtectedRoute>
+              <Layout role={role} onRoleChange={setRole}>
+                <AdminDashboard />
+              </Layout>
+            </ProtectedRoute>
           }
         />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      <MobileNav />
     </Suspense>
   );
 };
