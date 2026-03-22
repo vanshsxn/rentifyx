@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Mail, Lock, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, ArrowLeft, Eye, EyeOff, User } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -12,30 +13,60 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<"landlord" | "tenant">("tenant");
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // Instant redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      checkRoleAndRedirect(user.id);
+    }
+  }, [user]);
+
+  const checkRoleAndRedirect = async (userId: string) => {
+    const { data: roles } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId);
+
+    if (roles && roles.length > 0) {
+      const role = roles[0].role;
+      if (role === "landlord") navigate("/landlord", { replace: true });
+      else if (role === "admin") navigate("/admin", { replace: true });
+      else navigate("/tenant", { replace: true });
+    } else {
+      // No role yet, assign selected role
+      await supabase.from("user_roles").insert({ user_id: userId, role: selectedRole });
+      navigate(selectedRole === "landlord" ? "/landlord" : "/tenant", { replace: true });
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     if (isLogin) {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         toast.error("Login failed", { description: error.message });
-      } else {
+      } else if (data.user) {
         toast.success("Welcome back!");
-        navigate("/landlord");
+        await checkRoleAndRedirect(data.user.id);
       }
     } else {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: { emailRedirectTo: window.location.origin },
       });
       if (error) {
         toast.error("Signup failed", { description: error.message });
-      } else {
-        toast.success("Account created!", { description: "Please check your email to verify your account." });
+      } else if (data.user) {
+        // Auto-confirm is enabled, so user is immediately logged in
+        await supabase.from("user_roles").insert({ user_id: data.user.id, role: selectedRole });
+        toast.success("Account created!");
+        navigate(selectedRole === "landlord" ? "/landlord" : "/tenant", { replace: true });
       }
     }
     setLoading(false);
@@ -68,11 +99,28 @@ const Auth = () => {
         <div className="bg-card border border-border rounded-2xl p-8 card-shadow space-y-6">
           <div className="text-center space-y-1">
             <h1 className="text-2xl font-bold text-foreground">
-              {isLogin ? "Landlord Login" : "Create Account"}
+              {isLogin ? "Welcome Back" : "Create Account"}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {isLogin ? "Sign in to manage your properties" : "Sign up to list your properties"}
+              {isLogin ? "Sign in to your account" : "Sign up to get started"}
             </p>
+          </div>
+
+          {/* Role Selector */}
+          <div className="flex gap-2">
+            {(["tenant", "landlord"] as const).map((r) => (
+              <button
+                key={r}
+                onClick={() => setSelectedRole(r)}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
+                  selectedRole === r
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {r === "tenant" ? "🏠 Tenant" : "🏢 Landlord"}
+              </button>
+            ))}
           </div>
 
           {/* Google Sign-In */}

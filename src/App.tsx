@@ -8,8 +8,8 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import SplashScreen from "@/components/SplashScreen";
 import DevToolsBlocker from "@/components/DevToolsBlocker";
-// Removed BoxLoader import
-import { Loader2 } from "lucide-react"; 
+import MobileNav from "@/components/MobileNav";
+import { Loader2 } from "lucide-react";
 
 // Lazy load pages for faster initial load
 const Landing = lazy(() => import("@/pages/Landing"));
@@ -60,9 +60,11 @@ const AppContent = () => {
         <Route
           path="/tenant"
           element={
-            <Layout role={role} onRoleChange={setRole}>
-              <TenantDashboard />
-            </Layout>
+            <ProtectedRoute>
+              <Layout role={role} onRoleChange={setRole}>
+                <TenantDashboard />
+              </Layout>
+            </ProtectedRoute>
           }
         />
         <Route
@@ -78,13 +80,16 @@ const AppContent = () => {
         <Route
           path="/admin"
           element={
-            <Layout role={role} onRoleChange={setRole}>
-              <AdminDashboard />
-            </Layout>
+            <ProtectedRoute>
+              <Layout role={role} onRoleChange={setRole}>
+                <AdminDashboard />
+              </Layout>
+            </ProtectedRoute>
           }
         />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      <MobileNav />
     </Suspense>
   );
 };
