@@ -14,16 +14,211 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      favorites: {
+        Row: {
+          created_at: string
+          id: string
+          property_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          property_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          property_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "favorites_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      properties: {
+        Row: {
+          address: string
+          area: string
+          bathrooms: number | null
+          bedrooms: number | null
+          contact_email: string | null
+          created_at: string
+          distance: string | null
+          features: string[] | null
+          has_vr: boolean | null
+          id: string
+          image_url: string | null
+          is_featured: boolean | null
+          landlord_id: string
+          phone: string | null
+          rating: number | null
+          rent: number
+          sqft: number | null
+          title: string
+          updated_at: string
+          video_url: string | null
+          vr_url: string | null
+        }
+        Insert: {
+          address: string
+          area: string
+          bathrooms?: number | null
+          bedrooms?: number | null
+          contact_email?: string | null
+          created_at?: string
+          distance?: string | null
+          features?: string[] | null
+          has_vr?: boolean | null
+          id?: string
+          image_url?: string | null
+          is_featured?: boolean | null
+          landlord_id: string
+          phone?: string | null
+          rating?: number | null
+          rent: number
+          sqft?: number | null
+          title: string
+          updated_at?: string
+          video_url?: string | null
+          vr_url?: string | null
+        }
+        Update: {
+          address?: string
+          area?: string
+          bathrooms?: number | null
+          bedrooms?: number | null
+          contact_email?: string | null
+          created_at?: string
+          distance?: string | null
+          features?: string[] | null
+          has_vr?: boolean | null
+          id?: string
+          image_url?: string | null
+          is_featured?: boolean | null
+          landlord_id?: string
+          phone?: string | null
+          rating?: number | null
+          rent?: number
+          sqft?: number | null
+          title?: string
+          updated_at?: string
+          video_url?: string | null
+          vr_url?: string | null
+        }
+        Relationships: []
+      }
+      tenant_requests: {
+        Row: {
+          created_at: string
+          id: string
+          message: string | null
+          property_id: string
+          status: string | null
+          tenant_id: string
+          urgent: boolean | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          property_id: string
+          status?: string | null
+          tenant_id: string
+          urgent?: boolean | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          property_id?: string
+          status?: string | null
+          tenant_id?: string
+          urgent?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_requests_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "landlord" | "tenant"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +345,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "landlord", "tenant"],
+    },
   },
 } as const
