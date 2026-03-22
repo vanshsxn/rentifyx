@@ -4,21 +4,17 @@ import { properties } from "@/data/mockData";
 import { ArrowLeft, Star, MapPin, Bed, Bath, Maximize, Phone, MessageCircle, CalendarDays, Flag, Share2, Heart } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-
 const galleryImages = [
   "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&q=80",
   "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&q=80",
   "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80",
   "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80",
 ];
-
 // Demo properties from Landing page with their own VR links
 const demoVRLinks: Record<string, string> = {
   demo1: "https://planner5d.onelink.me/stDT/b877t36o",
 };
-
 const defaultVR = "https://planner5d.onelink.me/stDT/6erw1eh0";
-
 const PropertyDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -26,7 +22,6 @@ const PropertyDetail = () => {
   const [showVR, setShowVR] = useState(false);
   const [vrLoaded, setVrLoaded] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
-
   // Merge demo properties from landing with mockData properties
   const demoProperties = [
     {
@@ -45,10 +40,8 @@ const PropertyDetail = () => {
       bedrooms: 1, bathrooms: 1, sqft: 280, features: ["Cleaning"], landlordId: "l3", distance: "7 min walk", listed: "3 days ago",
     },
   ];
-
   const allProperties = [...properties, ...demoProperties];
   const property = allProperties.find((p) => p.id === id);
-
   if (!property) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -59,10 +52,8 @@ const PropertyDetail = () => {
       </div>
     );
   }
-
   const images = [property.image, ...galleryImages.filter((img) => img !== property.image).slice(0, 3)];
   const vrUrl = demoVRLinks[property.id] || defaultVR;
-
   const handleShare = async () => {
     try {
       await navigator.share({ title: property.title, url: window.location.href });
@@ -71,10 +62,9 @@ const PropertyDetail = () => {
       toast.success("Link copied to clipboard!");
     }
   };
-
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
+      {/* This is the Header of my website */}
       <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="container max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <button onClick={() => navigate(-1)} className="p-2 rounded-lg hover:bg-secondary transition-colors">
@@ -96,7 +86,7 @@ const PropertyDetail = () => {
       </div>
 
       <div className="container max-w-4xl mx-auto px-4 py-6 space-y-6">
-        {/* Image Gallery / VR */}
+        {/* the Image Gallery of the VR */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="relative rounded-2xl overflow-hidden">
           {showVR ? (
             <div className="w-full aspect-video bg-secondary relative">
@@ -118,7 +108,7 @@ const PropertyDetail = () => {
                 onLoad={() => setVrLoaded(true)}
                 loading="lazy"
               />
-              {/* Hide Planner5D branding overlay */}
+              {/* i am Hiding Planner5D branding overlay */}
               <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none" />
               <div className="absolute bottom-0 left-0 right-0 h-10 bg-background pointer-events-none" />
             </div>
@@ -134,7 +124,7 @@ const PropertyDetail = () => {
           </button>
         </motion.div>
 
-        {/* Thumbnails */}
+        {/* these are yhe Thumbnails */}
         {!showVR && (
           <div className="flex gap-2 overflow-x-auto pb-1">
             {images.map((img, i) => (
@@ -237,5 +227,4 @@ const PropertyDetail = () => {
     </div>
   );
 };
-
 export default PropertyDetail;

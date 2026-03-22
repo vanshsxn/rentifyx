@@ -3,16 +3,13 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Search, ArrowLeft, SlidersHorizontal } from "lucide-react";
 import { properties, areas, priceRanges, Property } from "@/data/mockData";
 import { motion } from "framer-motion";
-
 const Properties = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialBudget = searchParams.get("budget") || "All";
-
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedArea, setSelectedArea] = useState("All");
   const [selectedPrice, setSelectedPrice] = useState(initialBudget);
-
   const filterByPrice = (p: Property) => {
     if (selectedPrice === "All") return true;
     if (selectedPrice === "Under ₹5,000") return p.rent < 5000;
@@ -26,7 +23,6 @@ const Properties = () => {
     if (selectedPrice === "Over ¥250,000") return p.rent > 250000;
     return true;
   };
-
   const filtered = properties.filter(
     (p) =>
       (selectedArea === "All" || p.area === selectedArea) &&
@@ -36,7 +32,6 @@ const Properties = () => {
         p.area.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.address.toLowerCase().includes(searchQuery.toLowerCase()))
   );
-
   return (
     <div className="min-h-screen bg-background">
       <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-lg border-b border-border">
@@ -118,5 +113,4 @@ const Properties = () => {
     </div>
   );
 };
-
 export default Properties;

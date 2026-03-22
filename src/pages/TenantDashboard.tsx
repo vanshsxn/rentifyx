@@ -8,7 +8,6 @@ import SlideToRequest from "@/components/SlideToRequest";
 import PropertyDetailModal from "@/components/PropertyDetailModal";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
-
 const TenantDashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedArea, setSelectedArea] = useState("All");
@@ -17,7 +16,6 @@ const TenantDashboard = () => {
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [detailProperty, setDetailProperty] = useState<Property | null>(null);
   const [urgent, setUrgent] = useState(false);
-
   const filterByPrice = (p: Property) => {
     if (selectedPrice === "All") return true;
     if (selectedPrice === "Under ¥80,000") return p.rent < 80000;
@@ -26,14 +24,12 @@ const TenantDashboard = () => {
     if (selectedPrice === "Over ¥250,000") return p.rent > 250000;
     return true;
   };
-
   const filtered = properties.filter(
     (p) =>
       (selectedArea === "All" || p.area === selectedArea) &&
       filterByPrice(p) &&
       (searchQuery === "" || p.title.toLowerCase().includes(searchQuery.toLowerCase()) || p.area.toLowerCase().includes(searchQuery.toLowerCase()))
   );
-
   const compareProperties = properties.filter((p) => compareIds.includes(p.id));
 
   const toggleCompare = (id: string) => {
@@ -146,7 +142,5 @@ const TenantDashboard = () => {
         )}
       </AnimatePresence>
     </div>
-  );
-};
-
+  );};
 export default TenantDashboard;

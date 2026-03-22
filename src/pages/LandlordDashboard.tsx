@@ -3,15 +3,12 @@ import { properties, tenantRequests } from "@/data/mockData";
 import { Building2, Edit3, Trash2, Check, X, AlertTriangle, Mail, Phone, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-
 const LandlordDashboard = () => {
   const { user } = useAuth();
   const [requests, setRequests] = useState(tenantRequests);
   const [revealedIds, setRevealedIds] = useState<string[]>([]);
-
   // In production this would come from DB filtered by user. For now, show empty for new users.
   const [myProperties] = useState<typeof properties>([]);
-
   const handleAccept = (id: string) => {
     const req = requests.find((r) => r.id === id);
     setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: "accepted" } : r)));
@@ -20,7 +17,6 @@ const LandlordDashboard = () => {
       description: `${req?.tenantName}'s contact details are now visible.`,
     });
   };
-
   const handleReject = (id: string) => {
     const req = requests.find((r) => r.id === id);
     setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: "rejected" } : r)));
@@ -28,7 +24,6 @@ const LandlordDashboard = () => {
       description: `${req?.tenantName}'s request for ${req?.propertyTitle} was declined.`,
     });
   };
-
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -39,13 +34,11 @@ const LandlordDashboard = () => {
           </p>
         </div>
       </div>
-
       {/* My Properties - Empty State */}
       <section className="space-y-4">
         <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
           <Building2 className="w-4 h-4 text-primary" /> My Properties
         </h2>
-
         {myProperties.length === 0 ? (
           <div className="bg-card border border-border border-dashed rounded-xl p-10 text-center space-y-3">
             <div className="w-12 h-12 rounded-full bg-primary/5 flex items-center justify-center mx-auto">
@@ -81,7 +74,6 @@ const LandlordDashboard = () => {
           </div>
         )}
       </section>
-
       {/* Incoming Requests - Empty */}
       <section className="space-y-4">
         <h2 className="text-lg font-semibold text-foreground">Incoming Requests</h2>
