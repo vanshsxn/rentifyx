@@ -1,6 +1,20 @@
-import { useNavigate } from "react-router-dom"; import { motion } from "framer-motion"; import { ArrowRight, Building2, Sparkles, Star, MapPin, Maximize, Wallet, Home, Users, TrendingDown } from "lucide-react"; import { useEffect, useState } from "react"; import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom"; 
+import { motion } from "framer-motion"; 
+import { ArrowRight, Building2, Sparkles, Star, MapPin, Maximize, Wallet, Home, Users, TrendingDown } from "lucide-react"; 
+import { useEffect, useState } from "react"; 
+import { supabase } from "@/integrations/supabase/client";
 
-interface DBProperty { id: string; title: string; address: string; area: string; rent: number; rating: number; image_url: string | null; features: string[]; has_vr: boolean; }
+interface DBProperty { 
+  id: string; 
+  title: string; 
+  address: string; 
+  area: string; 
+  rent: number; 
+  rating: number; 
+  image_url: string | null; 
+  features: string[]; 
+  has_vr: boolean; 
+}
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -25,8 +39,8 @@ const Landing = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col font-sans">
-      {/* Cinematic Hero Section */}
-      <section className="relative h-[85vh] flex items-center justify-center px-4 overflow-hidden bg-slate-900">
+      {/* Cinematic Hero Section - Fixed with pb-40 to prevent overlap */}
+      <section className="relative min-h-[85vh] flex items-center justify-center px-4 pt-24 pb-40 overflow-hidden bg-slate-900">
         <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover z-0 opacity-60 pointer-events-none" src="/hero-video.mp4" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-background z-[1]" />
         
@@ -55,17 +69,17 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Floating Filter Grid */}
-      <div className="container max-w-5xl mx-auto px-4 -mt-16 relative z-20">
+      {/* Floating Filter Grid - Z-30 and -mt-20 for a clean overlap */}
+      <div className="container max-w-5xl mx-auto px-4 -mt-20 relative z-30">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {filters.map((f) => (
-            <button key={f.l} onClick={f.a} className="bg-card/80 backdrop-blur-2xl border border-border rounded-[2rem] p-6 text-center space-y-3 hover:border-primary/50 hover:-translate-y-2 transition-all active:scale-95 group shadow-xl">
-              <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto group-hover:bg-primary transition-colors">
-                <f.i className="w-6 h-6 text-primary group-hover:text-primary-foreground transition-colors" />
+            <button key={f.l} onClick={f.a} className="bg-card/90 backdrop-blur-2xl border border-border/50 rounded-[2.5rem] p-8 text-center space-y-3 hover:border-primary/50 hover:-translate-y-2 transition-all active:scale-95 group shadow-2xl shadow-black/10">
+              <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto group-hover:bg-primary transition-colors">
+                <f.i className="w-7 h-7 text-primary group-hover:text-primary-foreground transition-colors" />
               </div>
               <div>
-                <h3 className="text-xs font-black uppercase tracking-tight">{f.l}</h3>
-                <p className="text-[10px] text-muted-foreground font-bold">{f.d}</p>
+                <h3 className="text-[11px] font-black uppercase tracking-tight">{f.l}</h3>
+                <p className="text-[10px] text-muted-foreground font-bold opacity-70">{f.d}</p>
               </div>
             </button>
           ))}
