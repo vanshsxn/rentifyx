@@ -50,7 +50,7 @@ const Landing = () => {
               <Sparkles className="w-3 h-3" /> Redefining Rental
             </div>
             <h1 className="text-6xl md:text-8xl font-black tracking-tighter text-white leading-[0.9]">
-              FIND RENT. <br />
+              FIND RENT <br />
               <span className="text-primary italic">RELAX.</span>
             </h1>
             <p className="text-lg text-white/80 font-medium max-w-md mx-auto leading-relaxed drop-shadow-md">
