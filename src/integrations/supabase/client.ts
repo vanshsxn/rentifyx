@@ -2,8 +2,9 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+// Hardcoded credentials for RentifyX project
+const SUPABASE_URL = "https://rwoswpxrxtctyzzejpzk.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ3b3N3cHhyeHRjdHl6emVqcHprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMTEwNTEsImV4cCI6MjA4OTg4NzA1MX0.JzZCK9QyEKkb4yiDp_7e8IZYwkFL4W3z2Mkz8JhfNT0";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
