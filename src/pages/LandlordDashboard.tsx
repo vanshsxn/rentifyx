@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Building2, Edit3, Trash2, Check, X, Plus, Mail, Phone, Image, Video, MapPin } from "lucide-react";
+import { Building2, Trash2, Check, X, Plus, Image as ImageIcon, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -12,6 +12,7 @@ interface PropertyRow {
   area: string;
   rent: number;
   image_url: string | null;
+  images: string[] | null; // Added array support
   bedrooms: number;
   bathrooms: number;
   sqft: number;
@@ -40,22 +41,33 @@ const LandlordDashboard = () => {
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
+  
   const [form, setForm] = useState({
-    title: "", address: "", area: "", rent: "", image_url: "", bedrooms: "1", bathrooms: "1",
-    sqft: "", features: "", phone: "", contact_email: "", video_url: "", vr_url: "",
+    title: "", address: "", area: "", rent: "", 
+    gallery_images: "", // New field for comma-separated URLs
+    bedrooms: "1", bathrooms: "1",
+    sqft: "", features: "", phone: "", 
+    contact_email: "", video_url: "", vr_url: "",
   });
 
   const fetchData = async () => {
     if (!user) return;
-    const [propRes, reqRes] = await Promise.all([
-      supabase.from("properties").select("*").eq("landlord_id", user.id).order("created_at", { ascending: false }),
-      supabase.from("tenant_requests").select("*").in(
-        "property_id",
-        (await supabase.from("properties").select("id").eq("landlord_id", user.id)).data?.map(p => p.id) || []
-      ),
-    ]);
-    setProperties((propRes.data as PropertyRow[]) || []);
-    setRequests((reqRes.data as RequestRow[]) || []);
+    const { data: props, error: propErr } = await supabase
+      .from("properties")
+      .select("*")
+      .eq("landlord_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (propErr) return toast.error("Error fetching properties");
+
+    const propIds = props?.map(p => p.id) || [];
+    const { data: reqs } = await supabase
+      .from("tenant_requests")
+      .select("*")
+      .in("property_id", propIds);
+
+    setProperties((props as PropertyRow[]) || []);
+    setRequests((reqs as RequestRow[]) || []);
     setLoading(false);
   };
 
@@ -64,13 +76,21 @@ const LandlordDashboard = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+
+    // Convert comma-separated string to clean array
+    const imageArray = form.gallery_images
+      .split(",")
+      .map(url => url.trim())
+      .filter(url => url.startsWith("http"));
+
     const { error } = await supabase.from("properties").insert({
       landlord_id: user.id,
       title: form.title,
       address: form.address,
       area: form.area,
       rent: parseFloat(form.rent),
-      image_url: form.image_url || null,
+      image_url: imageArray[0] || null, // First image is the thumbnail
+      images: imageArray, // The full gallery array
       bedrooms: parseInt(form.bedrooms),
       bathrooms: parseInt(form.bathrooms),
       sqft: parseInt(form.sqft) || 0,
@@ -81,12 +101,18 @@ const LandlordDashboard = () => {
       vr_url: form.vr_url || null,
       has_vr: !!form.vr_url,
     });
+
     if (error) {
       toast.error("Failed to add property", { description: error.message });
     } else {
-      toast.success("Property added!");
+      toast.success("Property added with gallery!");
       setShowForm(false);
-      setForm({ title: "", address: "", area: "", rent: "", image_url: "", bedrooms: "1", bathrooms: "1", sqft: "", features: "", phone: "", contact_email: "", video_url: "", vr_url: "" });
+      setForm({ 
+        title: "", address: "", area: "", rent: "", 
+        gallery_images: "", bedrooms: "1", bathrooms: "1", 
+        sqft: "", features: "", phone: "", contact_email: "", 
+        video_url: "", vr_url: "" 
+      });
       fetchData();
     }
   };
@@ -104,118 +130,114 @@ const LandlordDashboard = () => {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
+    <div className="space-y-8 max-w-6xl mx-auto px-4 py-8">
+      <div className="flex items-center justify-between bg-card p-6 rounded-2xl border border-border shadow-sm">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Landlord Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">Welcome, {user?.email?.split("@")[0] ?? "Landlord"}</p>
+          <h1 className="text-2xl font-black tracking-tight text-foreground uppercase">Landlord Hub</h1>
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Management Portal · {user?.email}</p>
         </div>
-        <button onClick={() => setShowForm(!showForm)} className="flex items-center gap-2 px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold hover:opacity-90 active:scale-[0.98]">
+        <button onClick={() => setShowForm(!showForm)} className="flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground text-xs font-black uppercase tracking-widest hover:scale-[1.02] transition-all">
           <Plus className="w-4 h-4" /> Add Property
         </button>
       </div>
 
-      {/* Add Property Form */}
       <AnimatePresence>
         {showForm && (
           <motion.form
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
             onSubmit={handleSubmit}
-            className="bg-card border border-border rounded-xl p-6 space-y-4 card-shadow overflow-hidden"
+            className="bg-card border border-border rounded-2xl p-8 space-y-6 shadow-xl"
           >
-            <h3 className="text-lg font-semibold text-foreground">Add New Property</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input required placeholder="Title" value={form.title} onChange={e => setForm({...form, title: e.target.value})} className="px-3 py-2.5 rounded-lg border border-border bg-background text-sm text-foreground" />
-              <input required placeholder="Address" value={form.address} onChange={e => setForm({...form, address: e.target.value})} className="px-3 py-2.5 rounded-lg border border-border bg-background text-sm text-foreground" />
-              <input required placeholder="Area (e.g. Clement Town)" value={form.area} onChange={e => setForm({...form, area: e.target.value})} className="px-3 py-2.5 rounded-lg border border-border bg-background text-sm text-foreground" />
-              <input required type="number" placeholder="Rent (₹/mo)" value={form.rent} onChange={e => setForm({...form, rent: e.target.value})} className="px-3 py-2.5 rounded-lg border border-border bg-background text-sm text-foreground" />
-              <input placeholder="Image URL" value={form.image_url} onChange={e => setForm({...form, image_url: e.target.value})} className="px-3 py-2.5 rounded-lg border border-border bg-background text-sm text-foreground" />
-              <input placeholder="Video URL" value={form.video_url} onChange={e => setForm({...form, video_url: e.target.value})} className="px-3 py-2.5 rounded-lg border border-border bg-background text-sm text-foreground" />
-              <input type="number" placeholder="Bedrooms" value={form.bedrooms} onChange={e => setForm({...form, bedrooms: e.target.value})} className="px-3 py-2.5 rounded-lg border border-border bg-background text-sm text-foreground" />
-              <input type="number" placeholder="Bathrooms" value={form.bathrooms} onChange={e => setForm({...form, bathrooms: e.target.value})} className="px-3 py-2.5 rounded-lg border border-border bg-background text-sm text-foreground" />
-              <input type="number" placeholder="Sq Ft" value={form.sqft} onChange={e => setForm({...form, sqft: e.target.value})} className="px-3 py-2.5 rounded-lg border border-border bg-background text-sm text-foreground" />
-              <input placeholder="Features (comma separated)" value={form.features} onChange={e => setForm({...form, features: e.target.value})} className="px-3 py-2.5 rounded-lg border border-border bg-background text-sm text-foreground" />
-              <input placeholder="Phone" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} className="px-3 py-2.5 rounded-lg border border-border bg-background text-sm text-foreground" />
-              <input placeholder="Contact Email" value={form.contact_email} onChange={e => setForm({...form, contact_email: e.target.value})} className="px-3 py-2.5 rounded-lg border border-border bg-background text-sm text-foreground" />
-              <input placeholder="VR Tour URL (optional)" value={form.vr_url} onChange={e => setForm({...form, vr_url: e.target.value})} className="sm:col-span-2 px-3 py-2.5 rounded-lg border border-border bg-background text-sm text-foreground" />
+            <div className="flex items-center gap-2 border-b border-border pb-4">
+              <ImageIcon className="w-5 h-5 text-primary" />
+              <h3 className="text-sm font-black uppercase tracking-widest">List New Unit</h3>
             </div>
-            <div className="flex gap-3">
-              <button type="submit" className="px-6 py-2.5 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold hover:opacity-90">Submit</button>
-              <button type="button" onClick={() => setShowForm(false)} className="px-6 py-2.5 rounded-lg bg-secondary text-foreground text-sm font-medium">Cancel</button>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-1.5 lg:col-span-2">
+                 <label className="text-[10px] font-black uppercase tracking-tighter ml-1">Title</label>
+                 <input required placeholder="E.g. Luxury Penthouse" value={form.title} onChange={e => setForm({...form, title: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm" />
+              </div>
+              
+              <div className="space-y-1.5">
+                 <label className="text-[10px] font-black uppercase tracking-tighter ml-1">Rent (₹)</label>
+                 <input required type="number" placeholder="15000" value={form.rent} onChange={e => setForm({...form, rent: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm" />
+              </div>
+
+              <div className="space-y-1.5 lg:col-span-3">
+                 <label className="text-[10px] font-black uppercase tracking-tighter ml-1 text-primary">Gallery Images (Paste multiple URLs separated by commas)</label>
+                 <textarea placeholder="https://image1.jpg, https://image2.jpg..." value={form.gallery_images} onChange={e => setForm({...form, gallery_images: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm min-h-[100px]" />
+              </div>
+
+              <input required placeholder="Full Address" value={form.address} onChange={e => setForm({...form, address: e.target.value})} className="px-4 py-3 rounded-xl border border-border bg-background text-sm" />
+              <input required placeholder="Area (City/Locality)" value={form.area} onChange={e => setForm({...form, area: e.target.value})} className="px-4 py-3 rounded-xl border border-border bg-background text-sm" />
+              <input placeholder="Phone Number" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} className="px-4 py-3 rounded-xl border border-border bg-background text-sm" />
+              <input type="number" placeholder="Beds" value={form.bedrooms} onChange={e => setForm({...form, bedrooms: e.target.value})} className="px-4 py-3 rounded-xl border border-border bg-background text-sm" />
+              <input type="number" placeholder="Baths" value={form.bathrooms} onChange={e => setForm({...form, bathrooms: e.target.value})} className="px-4 py-3 rounded-xl border border-border bg-background text-sm" />
+              <input type="number" placeholder="Sq Ft" value={form.sqft} onChange={e => setForm({...form, sqft: e.target.value})} className="px-4 py-3 rounded-xl border border-border bg-background text-sm" />
+              <input placeholder="Features (e.g. WiFi, Parking)" value={form.features} onChange={e => setForm({...form, features: e.target.value})} className="md:col-span-2 px-4 py-3 rounded-xl border border-border bg-background text-sm" />
+              <input placeholder="VR Link" value={form.vr_url} onChange={e => setForm({...form, vr_url: e.target.value})} className="px-4 py-3 rounded-xl border border-primary/30 bg-primary/5 text-sm" />
+            </div>
+
+            <div className="flex gap-4 pt-4">
+              <button type="submit" className="flex-1 py-4 rounded-xl bg-primary text-primary-foreground text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20">Publish Listing</button>
+              <button type="button" onClick={() => setShowForm(false)} className="px-8 py-4 rounded-xl bg-secondary text-foreground text-[10px] font-black uppercase tracking-widest">Discard</button>
             </div>
           </motion.form>
         )}
       </AnimatePresence>
 
-      {/* My Properties */}
-      <section className="space-y-4">
-        <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-          <Building2 className="w-4 h-4 text-primary" /> My Properties
-        </h2>
-        {loading ? (
-          <div className="text-center py-8 text-muted-foreground text-sm">Loading...</div>
-        ) : properties.length === 0 ? (
-          <div className="bg-card border border-border border-dashed rounded-xl p-10 text-center space-y-3">
-            <div className="w-12 h-12 rounded-full bg-primary/5 flex items-center justify-center mx-auto">
-              <Plus className="w-6 h-6 text-primary" />
-            </div>
-            <h3 className="text-sm font-semibold text-foreground">No properties yet</h3>
-            <p className="text-xs text-muted-foreground max-w-xs mx-auto">Click "Add Property" to list your first property.</p>
-          </div>
-        ) : (
-          <div className="grid gap-3">
-            {properties.map((p) => (
-              <div key={p.id} className="flex items-center gap-4 bg-card border border-border rounded-lg p-4 card-shadow">
-                <img src={p.image_url || "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=200&q=60"} alt={p.title} className="w-16 h-16 rounded-lg object-cover flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-semibold text-foreground truncate">{p.title}</h3>
-                  <p className="text-xs text-muted-foreground">{p.area} · ₹{p.rent.toLocaleString()}/mo</p>
-                  {!p.has_vr && (
-                    <span className="text-[10px] text-orange-500 font-medium">No VR — Contact Admin for VR Creation</span>
-                  )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Properties Column */}
+        <section className="space-y-4">
+          <h2 className="text-xs font-black uppercase tracking-[0.3em] flex items-center gap-2 px-2">
+            <Building2 className="w-4 h-4 text-primary" /> Active Units ({properties.length})
+          </h2>
+          <div className="space-y-3">
+            {loading ? (
+              <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+            ) : properties.map((p) => (
+              <div key={p.id} className="group flex items-center gap-4 bg-card border border-border p-3 rounded-2xl hover:border-primary/50 transition-all shadow-sm">
+                <img src={p.image_url || "/placeholder.jpg"} className="w-16 h-16 rounded-xl object-cover" />
+                <div className="flex-1">
+                  <h3 className="text-[11px] font-black uppercase tracking-tight truncate">{p.title}</h3>
+                  <p className="text-[10px] font-bold text-muted-foreground">₹{p.rent.toLocaleString()} · {p.images?.length || 1} Images</p>
                 </div>
-                <button onClick={() => handleDelete(p.id)} className="p-2 rounded-md hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive">
+                <button onClick={() => handleDelete(p.id)} className="p-2.5 rounded-xl hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             ))}
           </div>
-        )}
-      </section>
+        </section>
 
-      {/* Incoming Requests */}
-      <section className="space-y-4">
-        <h2 className="text-lg font-semibold text-foreground">Incoming Requests</h2>
-        {requests.length === 0 ? (
-          <div className="bg-card border border-border border-dashed rounded-xl p-10 text-center">
-            <p className="text-sm text-muted-foreground">No incoming requests yet.</p>
-          </div>
-        ) : (
-          <div className="grid gap-3">
+        {/* Requests Column */}
+        <section className="space-y-4">
+          <h2 className="text-xs font-black uppercase tracking-[0.3em] px-2">Incoming Requests</h2>
+          <div className="space-y-3">
             {requests.map((r) => (
-              <div key={r.id} className="bg-card border border-border rounded-lg p-4 card-shadow flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-foreground">Request from tenant</p>
-                  <p className="text-xs text-muted-foreground">{r.urgent ? "🔴 Urgent" : "Normal"} · {r.status}</p>
-                  {r.message && <p className="text-xs text-muted-foreground mt-1">{r.message}</p>}
-                </div>
-                {r.status === "pending" && (
-                  <div className="flex gap-2">
-                    <button onClick={() => handleRequestAction(r.id, "accepted")} className="p-2 rounded-md bg-green-500/10 text-green-600 hover:bg-green-500/20">
-                      <Check className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => handleRequestAction(r.id, "rejected")} className="p-2 rounded-md bg-destructive/10 text-destructive hover:bg-destructive/20">
-                      <X className="w-4 h-4" />
-                    </button>
+              <div key={r.id} className="bg-card border border-border p-4 rounded-2xl shadow-sm space-y-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase ${r.urgent ? "bg-red-500 text-white" : "bg-primary/10 text-primary"}`}>
+                      {r.urgent ? "Urgent" : "Standard"}
+                    </span>
+                    <p className="text-[11px] font-bold mt-2">{r.message || "No message provided"}</p>
                   </div>
-                )}
+                  {r.status === "pending" && (
+                    <div className="flex gap-2">
+                      <button onClick={() => handleRequestAction(r.id, "accepted")} className="p-2 rounded-lg bg-green-500/10 text-green-600 hover:bg-green-500/20"><Check className="w-4 h-4" /></button>
+                      <button onClick={() => handleRequestAction(r.id, "rejected")} className="p-2 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20"><X className="w-4 h-4" /></button>
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
-        )}
-      </section>
+        </section>
+      </div>
     </div>
   );
 };
