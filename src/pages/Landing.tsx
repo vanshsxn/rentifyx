@@ -23,7 +23,6 @@ const Landing = () => {
 
   useEffect(() => {
     const getFeatured = async () => {
-      // Logic: Try to get featured first, if empty, get top 6 rated properties
       let { data, error } = await supabase
         .from("properties")
         .select("*")
@@ -55,139 +54,137 @@ const Landing = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col font-sans selection:bg-primary selection:text-white">
       {/* Cinematic Hero Section */}
-      <section className="relative min-h-[90vh] flex items-center justify-center px-4 pt-20 pb-32 overflow-hidden bg-slate-950">
+      <section className="relative min-h-[75vh] flex items-center justify-center px-4 pt-16 pb-24 overflow-hidden bg-slate-950">
         <video 
           autoPlay 
           muted 
           loop 
           playsInline 
-          className="absolute inset-0 w-full h-full object-cover z-0 opacity-50 pointer-events-none scale-105" 
+          className="absolute inset-0 w-full h-full object-cover z-0 opacity-40 pointer-events-none" 
           src="/hero-video.mp4" 
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-background z-[1]" />
         
-        <div className="text-center max-w-4xl mx-auto space-y-10 relative z-10">
+        <div className="text-center max-w-3xl mx-auto space-y-8 relative z-10">
           <motion.div 
-            initial={{ opacity: 0, y: 40 }} 
+            initial={{ opacity: 0, y: 20 }} 
             animate={{ opacity: 1, y: 0 }} 
-            transition={{ duration: 1, ease: "easeOut" }} 
-            className="space-y-6"
+            transition={{ duration: 0.8 }} 
+            className="space-y-4"
           >
-            <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 text-white text-[11px] font-black uppercase tracking-[0.3em]">
-              <Sparkles className="w-3.5 h-3.5 text-primary animate-pulse" /> Redefining Rental Luxury
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 text-white text-[10px] font-bold uppercase tracking-[0.2em]">
+              <Sparkles className="w-3 h-3 text-primary" /> Premium Rental Experience
             </div>
-            <h1 className="text-7xl md:text-[10rem] font-black tracking-tighter text-white leading-[0.8] drop-shadow-2xl">
+            {/* Scaled down H1 */}
+            <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-white leading-[1.1]">
               FIND RENT <br />
-              <span className="text-primary italic drop-shadow-none">RELAX.</span>
+              <span className="text-primary italic">RELAX.</span>
             </h1>
-            <p className="text-xl text-white/70 font-medium max-w-lg mx-auto leading-relaxed drop-shadow-md">
+            <p className="text-base text-white/60 font-medium max-w-md mx-auto leading-relaxed">
               The high-performance platform for modern tenants, landlords, and administrators.
             </p>
           </motion.div>
 
           <motion.div 
-            className="flex flex-col sm:flex-row items-center justify-center gap-5" 
+            className="flex flex-col sm:flex-row items-center justify-center gap-4" 
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 
-            transition={{ delay: 0.6 }}
+            transition={{ delay: 0.4 }}
           >
             <button 
               onClick={() => navigate("/tenant")} 
-              className="w-full sm:w-auto flex items-center justify-center gap-3 px-12 py-6 rounded-[2rem] bg-primary text-primary-foreground text-sm font-black uppercase tracking-widest hover:scale-105 transition-all shadow-[0_20px_50px_rgba(99,102,241,0.3)]"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-primary text-primary-foreground text-[12px] font-bold uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-primary/20"
             >
-              Browse Marketplace <ArrowRight className="w-5 h-5" />
+              Browse Listings <ArrowRight className="w-4 h-4" />
             </button>
             <button 
               onClick={() => navigate("/auth")} 
-              className="w-full sm:w-auto flex items-center justify-center gap-3 px-12 py-6 rounded-[2rem] bg-white/5 backdrop-blur-2xl border border-white/10 text-white text-sm font-black uppercase tracking-widest hover:bg-white/20 transition-all"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 text-white text-[12px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all"
             >
-              <Building2 className="w-5 h-5" /> Landlord Hub
+              <Building2 className="w-4 h-4" /> Landlord Hub
             </button>
           </motion.div>
         </div>
       </section>
 
       {/* Floating Filter Grid */}
-      <div className="container max-w-6xl mx-auto px-4 -mt-24 relative z-30">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-          {filters.map((f, idx) => (
-            <motion.button 
+      <div className="container max-w-5xl mx-auto px-4 -mt-16 relative z-30">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {filters.map((f) => (
+            <button 
               key={f.l} 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8 + (idx * 0.1) }}
               onClick={f.a} 
-              className="bg-card/80 backdrop-blur-3xl border border-border/50 rounded-[3rem] p-10 text-center space-y-4 hover:border-primary/50 hover:-translate-y-3 transition-all active:scale-95 group shadow-2xl shadow-black/20"
+              className="bg-card/90 backdrop-blur-2xl border border-border/50 rounded-[2rem] p-6 text-center space-y-3 hover:border-primary/50 hover:-translate-y-1 transition-all group shadow-xl"
             >
-              <div className="w-16 h-16 rounded-[1.5rem] bg-primary/10 flex items-center justify-center mx-auto group-hover:bg-primary transition-all duration-500">
-                <f.i className="w-8 h-8 text-primary group-hover:text-primary-foreground transition-colors" />
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto group-hover:bg-primary transition-colors">
+                <f.i className="w-6 h-6 text-primary group-hover:text-primary-foreground transition-colors" />
               </div>
               <div>
-                <h3 className="text-xs font-black uppercase tracking-wider">{f.l}</h3>
-                <p className="text-[10px] text-muted-foreground font-bold opacity-60 mt-1 uppercase tracking-tighter">{f.d}</p>
+                <h3 className="text-[11px] font-bold uppercase tracking-tight">{f.l}</h3>
+                <p className="text-[10px] text-muted-foreground opacity-70">{f.d}</p>
               </div>
-            </motion.button>
+            </button>
           ))}
         </div>
       </div>
 
       {/* Featured Grid */}
-      <main className="container max-w-7xl mx-auto px-6 py-32 space-y-16">
-        <div className="flex flex-col md:flex-row justify-between items-end gap-6 border-b border-border/50 pb-10">
-          <div className="space-y-3">
-            <h2 className="text-5xl md:text-6xl font-black tracking-tighter uppercase leading-none">Featured Units</h2>
-            <p className="text-[12px] text-primary font-black uppercase tracking-[0.4em] opacity-80">High-Performance Living</p>
+      <main className="container max-w-6xl mx-auto px-4 py-20 space-y-10">
+        <div className="flex flex-col md:flex-row justify-between items-end gap-4 border-b border-border/50 pb-8">
+          <div className="space-y-1">
+            <h2 className="text-3xl font-black tracking-tight uppercase">Featured Units</h2>
+            <p className="text-[10px] text-primary font-bold uppercase tracking-[0.3em]">High-Performance Living</p>
           </div>
           <button 
             onClick={() => navigate("/tenant")} 
-            className="group flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-foreground hover:text-primary transition-colors"
+            className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors border-b border-transparent hover:border-primary pb-1"
           >
-            View All Marketplace <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            View All Marketplace
           </button>
         </div>
 
         {loading ? (
-          <div className="h-96 flex flex-col items-center justify-center gap-4">
-             <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-             <span className="text-[10px] font-black uppercase tracking-[0.5em] text-muted-foreground">Syncing Database...</span>
+          <div className="h-64 flex flex-col items-center justify-center gap-3">
+             <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+             <span className="text-[9px] font-bold uppercase tracking-[0.4em] text-muted-foreground">Syncing...</span>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {list.map((p, i) => (
               <motion.div 
                 key={p.id} 
-                initial={{ opacity: 0, y: 30 }} 
+                initial={{ opacity: 0, y: 20 }} 
                 whileInView={{ opacity: 1, y: 0 }} 
                 viewport={{ once: true }} 
                 transition={{ delay: i * 0.1 }}
-                className="group cursor-pointer space-y-6" 
+                className="group cursor-pointer space-y-4" 
                 onClick={() => navigate(`/property/${p.id}`)}
               >
-                <div className="relative aspect-[4/3] rounded-[3rem] overflow-hidden shadow-2xl group-hover:shadow-primary/20 transition-all duration-500">
+                <div className="relative aspect-[4/3] rounded-[2rem] overflow-hidden shadow-md group-hover:shadow-xl transition-all duration-500">
                   <img 
-                    src={p.image_url || "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=1000"} 
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" 
+                    src={p.image_url || "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=800"} 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
                     alt={p.title}
                   />
-                  <div className="absolute top-6 right-6 bg-background/90 backdrop-blur-xl px-5 py-2.5 rounded-2xl text-[13px] font-black text-primary shadow-xl">
+                  <div className="absolute top-4 right-4 bg-background/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[11px] font-bold text-primary">
                     ₹{p.rent.toLocaleString()}
                   </div>
                   {p.has_vr && (
-                    <div className="absolute bottom-6 left-6 flex items-center gap-2 px-4 py-2 rounded-2xl bg-primary text-primary-foreground text-[10px] font-black tracking-widest shadow-2xl animate-bounce">
-                      <Maximize className="w-3.5 h-3.5" /> VR AVAILABLE
+                    <div className="absolute bottom-4 left-4 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-[9px] font-bold tracking-widest shadow-lg">
+                      <Maximize className="w-3 h-3" /> VR
                     </div>
                   )}
                 </div>
                 
-                <div className="px-4 space-y-2">
+                <div className="px-2 space-y-1">
                   <div className="flex justify-between items-center">
-                    <h3 className="text-2xl font-black tracking-tighter group-hover:text-primary transition-colors">{p.title}</h3>
-                    <div className="flex items-center gap-1.5 bg-orange-500/10 px-3 py-1 rounded-full text-orange-500 text-[11px] font-black border border-orange-500/20">
-                      <Star className="w-3.5 h-3.5 fill-current" /> {p.rating || "5.0"}
+                    <h3 className="text-lg font-bold tracking-tight group-hover:text-primary transition-colors">{p.title}</h3>
+                    <div className="flex items-center gap-1 text-orange-500 text-[10px] font-bold">
+                      <Star className="w-3 h-3 fill-current" /> {p.rating || "5.0"}
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground font-bold uppercase tracking-tight flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-primary" /> {p.address}
+                  <p className="text-[10px] text-muted-foreground font-medium uppercase flex items-center gap-1.5">
+                    <MapPin className="w-3 h-3 text-primary/60" /> {p.address}
                   </p>
                 </div>
               </motion.div>
@@ -197,13 +194,10 @@ const Landing = () => {
       </main>
 
       {/* Footer */}
-      <footer className="py-20 border-t border-border/50 bg-card/30 backdrop-blur-sm text-center">
-        <div className="space-y-6">
-          <div className="text-2xl font-black tracking-tighter">Rentify<span className="text-primary">X</span></div>
-          <p className="text-[10px] font-black uppercase tracking-[0.5em] text-muted-foreground/40">
-            © 2026 Made by MV Studios Japan
-          </p>
-        </div>
+      <footer className="py-12 border-t border-border/50 text-center">
+        <p className="text-[9px] font-bold uppercase tracking-[0.4em] text-muted-foreground/30">
+          © 2026 Made by MV Studios Japan
+        </p>
       </footer>
     </div>
   );
