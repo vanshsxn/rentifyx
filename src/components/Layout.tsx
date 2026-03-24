@@ -25,6 +25,13 @@ const Layout = ({ children, role, onRoleChange }: LayoutProps) => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
+  /**
+   * MASTER ADMIN CHECK
+   * Only I (vanshsxn2006@gmail.com) can see the role switcher.
+   */
+  const MASTER_ADMIN_EMAIL = "vanshsxn2006@gmail.com"; 
+  const isAdmin = user?.email === MASTER_ADMIN_EMAIL;
+
   const handleSignOut = async () => {
     await signOut();
     toast("Signed out successfully");
@@ -41,27 +48,30 @@ const Layout = ({ children, role, onRoleChange }: LayoutProps) => {
           </Link>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
-              {roles.map((r) => {
-                const Icon = r.icon;
-                const isActive = role === r.key;
-                return (
-                  <Link
-                    key={r.key}
-                    to={r.path}
-                    onClick={() => onRoleChange(r.key)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
-                      isActive
-                        ? "bg-card text-foreground card-shadow"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">{r.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
+            {/* ROLE SWITCHER: Hidden for everyone except vanshsxn2006@gmail.com */}
+            {isAdmin && (
+              <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
+                {roles.map((r) => {
+                  const Icon = r.icon;
+                  const isActive = role === r.key;
+                  return (
+                    <Link
+                      key={r.key}
+                      to={r.path}
+                      onClick={() => onRoleChange(r.key)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
+                        isActive
+                          ? "bg-card text-foreground card-shadow"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">{r.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Dark mode toggle */}
             <button
@@ -100,8 +110,10 @@ const Layout = ({ children, role, onRoleChange }: LayoutProps) => {
         </AnimatePresence>
       </main>
 
-      <footer className="py-6 text-center">
-        <p className="text-xs text-muted-foreground tracking-wide">Made by MV Studios Japan.</p>
+      <footer className="py-6 text-center border-t border-border/40 mt-auto">
+        <p className="text-xs text-muted-foreground tracking-wide">
+          © 2026 Made by MV Studios Japan.
+        </p>
       </footer>
     </div>
   );
