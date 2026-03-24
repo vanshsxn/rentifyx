@@ -19,9 +19,9 @@ const RecommendedSection = ({ currentProperty }: { currentProperty: any }) => {
       const { data } = await supabase
         .from("properties")
         .select("*")
-        .neq("id", currentProperty.id) // Don't show the same house
-        .gte("rent", currentProperty.rent - 5000) // Similar price floor
-        .lte("rent", currentProperty.rent + 5000) // Similar price ceiling
+        .neq("id", currentProperty.id)
+        .gte("rent", currentProperty.rent - 5000)
+        .lte("rent", currentProperty.rent + 5000)
         .limit(4);
       
       if (data) setRecommendations(data);
@@ -42,28 +42,35 @@ const RecommendedSection = ({ currentProperty }: { currentProperty: any }) => {
         </Link>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {recommendations.map((item) => (
-          <Link 
-            key={item.id} 
-            to={`/property/${item.id}`}
-            className="group bg-card border border-border rounded-3xl overflow-hidden hover:shadow-xl transition-all"
-          >
-            <div className="aspect-[4/3] overflow-hidden">
-              <img 
-                src={item.image_url || "/placeholder.jpg"} 
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
-              />
-            </div>
-            <div className="p-4 space-y-1">
-              <h3 className="text-[11px] font-black uppercase truncate">{item.title}</h3>
-              <p className="text-[9px] font-bold text-muted-foreground uppercase">{item.area}</p>
-              <div className="flex items-center justify-between mt-2">
-                <span className="text-xs font-black text-primary">₹{item.rent.toLocaleString()}</span>
-                <div className="flex items-center gap-1 text-[10px] font-bold"><Star className="w-3 h-3 fill-orange-500 text-orange-500"/>{item.rating || 0}</div>
+        {recommendations.map((item) => {
+          // Fallback logic for recommendation thumbnails
+          const thumb = item.images && item.images.length > 0 ? item.images[0] : item.image_url;
+          return (
+            <Link 
+              key={item.id} 
+              to={`/property/${item.id}`}
+              className="group bg-card border border-border rounded-3xl overflow-hidden hover:shadow-xl transition-all"
+            >
+              <div className="aspect-[4/3] overflow-hidden">
+                <img 
+                  src={thumb || "/placeholder.jpg"} 
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                />
               </div>
-            </div>
-          </Link>
-        ))}
+              <div className="p-4 space-y-1">
+                <h3 className="text-[11px] font-black uppercase truncate">{item.title}</h3>
+                <p className="text-[9px] font-bold text-muted-foreground uppercase">{item.area}</p>
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-xs font-black text-primary">₹{item.rent.toLocaleString()}</span>
+                  <div className="flex items-center gap-1 text-[10px] font-bold">
+                    <Star className="w-3 h-3 fill-orange-500 text-orange-500"/>
+                    {item.rating || 0}
+                  </div>
+                </div>
+              </div>
+            </Link>
+          );
+        })}
       </div>
     </section>
   );
@@ -100,12 +107,17 @@ const RatingSection = ({ propertyId }: { propertyId: string }) => {
       <div className="flex gap-2 mb-4">
         {[1, 2, 3, 4, 5].map((star) => (
           <button key={star} onMouseEnter={() => setHover(star)} onMouseLeave={() => setHover(0)} onClick={() => setUserRating(star)}>
-            <Star className={`w-8 h-8 ${star <= (hover || userRating) ? "fill-orange-500 text-orange-500" : "text-muted-foreground opacity-30"}`} />
+            <Star className={`w-8 h-8 transition-colors ${star <= (hover || userRating) ? "fill-orange-500 text-orange-500" : "text-muted-foreground opacity-30"}`} />
           </button>
         ))}
       </div>
-      <textarea placeholder="Experience... (Optional)" value={comment} onChange={(e) => setComment(e.target.value)} className="w-full p-4 rounded-2xl bg-background border border-border text-xs min-h-[80px] mb-4" />
-      <button onClick={submitRating} disabled={isSubmitting} className="w-full py-4 rounded-xl bg-foreground text-background text-[10px] font-black uppercase tracking-widest hover:opacity-90">
+      <textarea 
+        placeholder="Experience... (Optional)" 
+        value={comment} 
+        onChange={(e) => setComment(e.target.value)} 
+        className="w-full p-4 rounded-2xl bg-background border border-border text-xs min-h-[80px] mb-4 focus:outline-none focus:ring-1 focus:ring-primary" 
+      />
+      <button onClick={submitRating} disabled={isSubmitting} className="w-full py-4 rounded-xl bg-foreground text-background text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-all active:scale-95 disabled:opacity-50">
         {isSubmitting ? "Submitting..." : "Submit Review"}
       </button>
     </div>
@@ -127,7 +139,7 @@ const PropertyDetail = () => {
       const { data } = await supabase.from("properties").select("*").eq("id", id).single();
       if (data) setP(data);
       setLoading(false);
-      window.scrollTo(0, 0); // Scroll to top on change
+      window.scrollTo(0, 0);
     };
     getData();
   }, [id]);
@@ -147,7 +159,9 @@ const PropertyDetail = () => {
   if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   if (!p) return <div className="h-screen flex items-center justify-center font-black uppercase">Unit Not Found</div>;
 
-  const imgs = p.images && p.images.length > 0 ? p.images : [p.image_url || ""];
+  // --- Multi-Image Logic ---
+  // If 'images' array exists and has content, use it. Otherwise, fallback to the single 'image_url'.
+  const displayImages = p.images && p.images.length > 0 ? p.images : [p.image_url || "/placeholder.jpg"];
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -155,71 +169,116 @@ const PropertyDetail = () => {
         <button onClick={() => navigate(-1)} className="p-2 hover:bg-secondary rounded-xl transition-colors"><ArrowLeft className="w-5 h-5"/></button>
         <div className="flex items-center gap-2">
             <Building2 className="w-4 h-4 text-primary" />
-            <span className="text-[10px] font-black uppercase tracking-widest">{p.title}</span>
+            <span className="text-[10px] font-black uppercase tracking-widest truncate max-w-[150px]">{p.title}</span>
         </div>
         <div className="flex gap-4">
-          <button onClick={() => toast.success("Saved")}><Heart className="w-5 h-5"/></button>
+          <button onClick={() => toast.success("Saved")}><Heart className="w-5 h-5 hover:fill-red-500 hover:text-red-500 transition-colors"/></button>
           <button onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success("Link copied"); }}><Share2 className="w-5 h-5"/></button>
         </div>
       </header>
 
       <main className="max-w-[1400px] mx-auto px-6 py-10">
         <div className="grid grid-cols-1 md:grid-cols-[80px,1fr,400px] gap-8 items-start mb-20">
-          <div className="flex flex-row md:flex-col gap-3 overflow-x-auto scrollbar-hide">
-            {imgs.map((img: string, i: number) => (
-              <button key={i} onClick={() => { setActiveImg(i); setShowVR(false); }} className={`flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all ${i === activeImg && !showVR ? "border-primary scale-105" : "border-transparent opacity-40"}`}>
-                <img src={img} className="w-full h-full object-cover" />
+          
+          {/* IMAGE THUMBNAILS SIDEBAR */}
+          <div className="flex flex-row md:flex-col gap-3 overflow-x-auto scrollbar-hide py-2">
+            {displayImages.map((img: string, i: number) => (
+              <button 
+                key={i} 
+                onClick={() => { setActiveImg(i); setShowVR(false); }} 
+                className={`flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all 
+                  ${i === activeImg && !showVR ? "border-primary scale-105 shadow-md" : "border-transparent opacity-40 hover:opacity-100"}`}
+              >
+                <img src={img} className="w-full h-full object-cover" alt={`View ${i}`} />
               </button>
             ))}
           </div>
 
+          {/* MAIN DISPLAY (IMAGE OR VR) */}
           <div className="relative aspect-square bg-black rounded-[2.5rem] overflow-hidden border border-border shadow-2xl">
             <AnimatePresence mode="wait">
               {showVR ? (
                 <motion.div key="vr" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full relative">
                   <iframe src={p.vr_url} className="w-full h-full border-none" allowFullScreen />
-                  <button onClick={() => setShowVR(false)} className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/80 text-white rounded-full backdrop-blur-md"><X className="w-5 h-5" /></button>
+                  <button onClick={() => setShowVR(false)} className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/80 text-white rounded-full backdrop-blur-md shadow-lg"><X className="w-5 h-5" /></button>
                 </motion.div>
               ) : (
-                <motion.img key={activeImg} src={imgs[activeImg]} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full h-full object-cover" />
+                <motion.img 
+                  key={activeImg} 
+                  src={displayImages[activeImg]} 
+                  initial={{ opacity: 0, scale: 1.1 }} 
+                  animate={{ opacity: 1, scale: 1 }} 
+                  className="w-full h-full object-cover" 
+                  alt={p.title}
+                />
               )}
             </AnimatePresence>
-            {!showVR && <div className="absolute top-6 right-6 bg-primary text-primary-foreground px-4 py-2 rounded-2xl text-xs font-black shadow-xl">₹{p.rent.toLocaleString()}</div>}
+            {!showVR && (
+              <div className="absolute top-6 right-6 bg-primary text-primary-foreground px-4 py-2 rounded-2xl text-xs font-black shadow-xl">
+                ₹{p.rent.toLocaleString()}
+              </div>
+            )}
           </div>
 
+          {/* PROPERTY INFO & ACTIONS */}
           <div className="space-y-8">
             <div className="space-y-2">
                 <div className="flex justify-between items-start">
                   <h1 className="text-3xl font-black tracking-tighter uppercase leading-none">{p.title}</h1>
-                  <div className="flex items-center gap-1 text-orange-500 font-bold text-xs"><Star className="w-3.5 h-3.5 fill-current"/>{p.rating || 0}</div>
+                  <div className="flex items-center gap-1 text-orange-500 font-bold text-xs">
+                    <Star className="w-3.5 h-3.5 fill-current"/>
+                    {p.rating || 0}
+                  </div>
                 </div>
-                <p className="text-[10px] text-muted-foreground font-bold uppercase flex items-center gap-1.5"><MapPin className="w-4 h-4 text-primary"/>{p.address}</p>
+                <p className="text-[10px] text-muted-foreground font-bold uppercase flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4 text-primary"/>{p.address}
+                </p>
             </div>
 
             {p.has_vr && p.vr_url ? (
-              <button onClick={() => setShowVR(true)} className={`w-full flex items-center justify-center gap-3 py-5 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl transition-all ${showVR ? "bg-secondary" : "bg-primary text-primary-foreground hover:scale-[1.02]"}`}>
+              <button 
+                onClick={() => setShowVR(true)} 
+                className={`w-full flex items-center justify-center gap-3 py-5 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl transition-all 
+                  ${showVR ? "bg-secondary text-foreground" : "bg-primary text-primary-foreground hover:scale-[1.02] active:scale-95"}`}
+              >
                 <Sparkles className="w-5 h-5" /> {showVR ? "Viewing AI VR" : "Launch AI 3D VR Tour"}
               </button>
-            ) : <div className="w-full py-5 text-center text-[10px] font-black uppercase bg-secondary text-muted-foreground rounded-2xl">AI VR Processing...</div>}
+            ) : (
+              <div className="w-full py-5 text-center text-[10px] font-black uppercase bg-secondary text-muted-foreground rounded-2xl">
+                AI VR Processing...
+              </div>
+            )}
 
             <div className="grid grid-cols-3 gap-3">
-              {[{i:Bed, v:p.bedrooms, l:"Beds"}, {i:Bath, v:p.bathrooms, l:"Baths"}, {i:Maximize, v:p.sqft, l:"SqFt"}].map((s, idx) => (
-                <div key={idx} className="bg-card border border-border p-4 rounded-2xl text-center">
-                  <s.i className="w-4 h-4 mx-auto mb-2 text-primary opacity-60"/><p className="text-sm font-black">{s.v}</p><p className="text-[9px] text-muted-foreground uppercase font-bold">{s.l}</p>
+              {[
+                {i: Bed, v: p.bedrooms, l: "Beds"}, 
+                {i: Bath, v: p.bathrooms, l: "Baths"}, 
+                {i: Maximize, v: p.sqft, l: "SqFt"}
+              ].map((s, idx) => (
+                <div key={idx} className="bg-card border border-border p-4 rounded-2xl text-center shadow-sm">
+                  <s.i className="w-4 h-4 mx-auto mb-2 text-primary opacity-60"/>
+                  <p className="text-sm font-black">{s.v || "N/A"}</p>
+                  <p className="text-[9px] text-muted-foreground uppercase font-bold">{s.l}</p>
                 </div>
               ))}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => window.open(`tel:${p.phone}`)} className="flex items-center justify-center gap-2 py-4 rounded-2xl bg-foreground text-background font-black text-[10px] uppercase tracking-widest"><Phone className="w-4 h-4"/> Call</button>
-                <button onClick={handleChatRequest} className="flex items-center justify-center gap-2 py-4 rounded-2xl bg-secondary font-black text-[10px] uppercase tracking-widest"><MessageCircle className="w-4 h-4"/> Chat Now</button>
-                <button className="col-span-2 flex items-center justify-center gap-2 py-4 rounded-2xl bg-secondary font-black text-[10px] uppercase tracking-widest"><CalendarDays className="w-4 h-4"/> Schedule Visit</button>
+                <button onClick={() => window.open(`tel:${p.phone}`)} className="flex items-center justify-center gap-2 py-4 rounded-2xl bg-foreground text-background font-black text-[10px] uppercase tracking-widest hover:opacity-90 active:scale-95 transition-all">
+                  <Phone className="w-4 h-4"/> Call
+                </button>
+                <button onClick={handleChatRequest} className="flex items-center justify-center gap-2 py-4 rounded-2xl bg-secondary font-black text-[10px] uppercase tracking-widest hover:bg-secondary/80 active:scale-95 transition-all">
+                  <MessageCircle className="w-4 h-4"/> Chat Now
+                </button>
+                <button className="col-span-2 flex items-center justify-center gap-2 py-4 rounded-2xl bg-secondary font-black text-[10px] uppercase tracking-widest hover:bg-secondary/80 active:scale-95 transition-all">
+                  <CalendarDays className="w-4 h-4"/> Schedule Visit
+                </button>
             </div>
+            
             <RatingSection propertyId={id!} />
           </div>
         </div>
 
-        {/* RECOMMENDATION SECTION */}
         <RecommendedSection currentProperty={p} />
       </main>
     </div>
