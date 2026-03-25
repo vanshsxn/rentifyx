@@ -51,10 +51,11 @@ const TenantDashboard = () => {
     setLoading(false);
   };
 
-  // --- Combined Filter Logic ---
+  // --- ADVANCED FILTER & KNAPSACK LOGIC ---
   useEffect(() => {
-    let result = properties;
+    let result = [...properties];
 
+    // 1. Text Search Filter (Area or Title)
     if (searchQuery) {
       result = result.filter(p => 
         p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -62,16 +63,58 @@ const TenantDashboard = () => {
       );
     }
 
-    if (selectedTags.length > 0) {
-      result = result.filter(p => 
-        selectedTags.every(tag => p.features?.includes(tag))
-      );
-    }
-
     const maxRent = searchParams.get("maxRent");
-    if (maxRent && searchParams.get("optimize") === "true") {
-        const budget = parseInt(maxRent);
-        result = result.filter(p => p.rent <= budget);
+    const isOptimized = searchParams.get("optimize") === "true";
+
+    if (maxRent && isOptimized) {
+      // 2. KNAPSACK OPTIMIZATION (Budget + Facilities)
+      const W = parseInt(maxRent);
+      const n = result.length;
+      
+      // dp[i][w] will store the maximum "Value Score" we can get
+      let dp = Array(n + 1).fill(0).map(() => Array(W + 1).fill(0));
+
+      for (let i = 1; i <= n; i++) {
+        const item = result[i - 1];
+        const weight = item.rent;
+        
+        // COMPOSITE VALUE CALCULATION:
+        // Base value from Rating + Bonus for every facility tag matching user selection
+        const matchingTagsCount = item.features?.filter((f: string) => 
+          selectedTags.includes(f)
+        ).length || 0;
+
+        // If no tags selected, value is just Rating. If tags selected, tags give 5pts each.
+        const baseValue = (item.rating || 4.0) * 10;
+        const tagBonus = selectedTags.length > 0 ? (matchingTagsCount * 8) : (item.features?.length || 0) * 2;
+        const totalValue = baseValue + tagBonus;
+
+        for (let w = 0; w <= W; w++) {
+          if (weight <= w) {
+            dp[i][w] = Math.max(totalValue + dp[i - 1][w - weight], dp[i - 1][w]);
+          } else {
+            dp[i][w] = dp[i - 1][w];
+          }
+        }
+      }
+
+      // Backtracking to retrieve the optimal properties
+      let selected: any[] = [];
+      let currW = W;
+      for (let i = n; i > 0 && currW > 0; i--) {
+        if (dp[i][currW] !== dp[i - 1][currW]) {
+          selected.push(result[i - 1]);
+          currW -= result[i - 1].rent;
+        }
+      }
+      result = selected;
+    } else {
+      // 3. Standard Tag Filtering (if budget optimizer is OFF)
+      if (selectedTags.length > 0) {
+        result = result.filter(p => 
+          selectedTags.every(tag => p.features?.includes(tag))
+        );
+      }
     }
 
     setFilteredProps(result);
@@ -89,7 +132,7 @@ const TenantDashboard = () => {
       setCompareList(compareList.filter(item => item.id !== p.id));
     } else {
       if (compareList.length >= 3) {
-        toast.error("Limit Reached", { description: "You can compare up to 3 units side-by-side." });
+        toast.error("Limit Reached", { description: "Select up to 3 units." });
         return;
       }
       setCompareList([...compareList, p]);
@@ -112,9 +155,12 @@ const TenantDashboard = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <button className="px-6 py-4 bg-foreground text-background rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-primary hover:text-white transition-all">
-              <SlidersHorizontal className="w-4 h-4" /> Filters
-            </button>
+            <div className="flex items-center gap-2 bg-foreground text-background px-6 py-4 rounded-2xl">
+               <SlidersHorizontal className="w-4 h-4" />
+               <span className="text-[10px] font-black uppercase tracking-widest">
+                {searchParams.get("optimize") === "true" ? "Budget Optimized" : "Standard View"}
+               </span>
+            </div>
           </div>
 
           <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
@@ -139,19 +185,15 @@ const TenantDashboard = () => {
       <main className="max-w-6xl mx-auto px-4 mt-10">
         <div className="flex items-center justify-between mb-8 px-2">
             <div>
-                <h2 className="text-2xl font-black uppercase tracking-tighter italic">Market Listings</h2>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{filteredProps.length} Results Found</p>
-            </div>
-            <div className="flex bg-secondary p-1 rounded-xl">
-                <button className="p-2 bg-background rounded-lg shadow-sm"><LayoutGrid className="w-4 h-4"/></button>
-                <button className="p-2 text-muted-foreground"><List className="w-4 h-4"/></button>
+                <h2 className="text-2xl font-black uppercase tracking-tighter italic">Top Matches</h2>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{filteredProps.length} Units Found</p>
             </div>
         </div>
 
         {loading ? (
             <div className="h-64 flex flex-col items-center justify-center gap-4">
                 <Loader2 className="w-10 h-10 animate-spin text-primary" />
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Syncing Database...</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Running Algorithms...</span>
             </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -160,8 +202,8 @@ const TenantDashboard = () => {
                 <motion.div 
                   layout
                   key={p.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.9 }}
                   className="group cursor-pointer space-y-4"
                   onClick={() => navigate(`/property/${p.id}`)}
@@ -169,7 +211,6 @@ const TenantDashboard = () => {
                   <div className="relative aspect-[4/3] rounded-[2.5rem] overflow-hidden shadow-sm group-hover:shadow-2xl transition-all duration-500">
                     <img src={p.image_url || "/placeholder.jpg"} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={p.title} />
                     
-                    {/* Compare Button */}
                     <button 
                       onClick={(e) => toggleCompare(p, e)}
                       className={`absolute top-5 right-16 p-3 rounded-2xl backdrop-blur-md transition-all z-10 ${
@@ -194,7 +235,7 @@ const TenantDashboard = () => {
                   <div className="px-2 space-y-2">
                     <div className="flex justify-between items-start">
                         <div className="space-y-1">
-                            <h3 className="text-lg font-black uppercase tracking-tight group-hover:text-primary transition-colors">{p.title}</h3>
+                            <h3 className="text-lg font-black uppercase tracking-tight group-hover:text-primary transition-colors leading-none">{p.title}</h3>
                             <p className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-bold uppercase">
                                 <MapPin className="w-3 h-3 text-primary/60" /> {p.area}
                             </p>
@@ -207,8 +248,10 @@ const TenantDashboard = () => {
                         </div>
                     </div>
                     <div className="flex flex-wrap gap-1.5 pt-1">
-                        {p.features?.slice(0, 3).map((f: string) => (
-                            <span key={f} className="text-[8px] font-black uppercase tracking-tighter text-muted-foreground/60 bg-secondary px-2 py-1 rounded-md border border-border/50">{f}</span>
+                        {p.features?.map((f: string) => (
+                            <span key={f} className={`text-[8px] font-black uppercase tracking-tighter px-2 py-1 rounded-md border ${
+                                selectedTags.includes(f) ? "bg-primary/10 border-primary/30 text-primary" : "bg-secondary border-border/50 text-muted-foreground/60"
+                            }`}>{f}</span>
                         ))}
                     </div>
                   </div>
@@ -216,6 +259,13 @@ const TenantDashboard = () => {
               ))}
             </AnimatePresence>
           </div>
+        )}
+
+        {!loading && filteredProps.length === 0 && (
+            <div className="py-32 text-center">
+                <h3 className="text-xl font-black uppercase">No Optimal Matches</h3>
+                <p className="text-xs text-muted-foreground font-bold uppercase mt-2">Try increasing your budget or removing some facility tags.</p>
+            </div>
         )}
       </main>
 
@@ -227,59 +277,50 @@ const TenantDashboard = () => {
               <div className="flex items-center gap-4 px-4">
                 <div className="flex -space-x-4">
                   {compareList.map((p) => (
-                    <img key={p.id} src={p.image_url} className="w-10 h-10 rounded-full border-2 border-foreground object-cover shadow-lg" />
+                    <img key={p.id} src={p.image_url} className="w-10 h-10 rounded-full border-2 border-foreground object-cover" />
                   ))}
                 </div>
-                <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest leading-none">Analysis Mode</p>
+                <div className="hidden sm:block">
+                    <p className="text-[10px] font-black uppercase tracking-widest leading-none">Side-By-Side Mode</p>
                     <p className="text-[8px] font-bold opacity-50 uppercase mt-1">{compareList.length}/3 Units Selected</p>
                 </div>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => setCompareList([])} className="px-4 py-2 text-[10px] font-black uppercase opacity-50 hover:opacity-100 transition-opacity">Clear</button>
-                <button onClick={() => setShowCompareModal(true)} className="bg-primary text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all">Compare Now</button>
+                <button onClick={() => setCompareList([])} className="px-4 py-2 text-[10px] font-black uppercase opacity-50">Clear</button>
+                <button onClick={() => setShowCompareModal(true)} className="bg-primary text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest">Compare</button>
               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* SIDE-BY-SIDE MODAL */}
+      {/* COMPARISON MODAL */}
       <AnimatePresence>
         {showCompareModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-background/95 backdrop-blur-2xl p-6 overflow-y-auto">
             <div className="max-w-6xl mx-auto py-10 space-y-12">
               <div className="flex justify-between items-center">
-                <h2 className="text-4xl font-black uppercase tracking-tighter italic">Side-By-Side Comparison</h2>
-                <button onClick={() => setShowCompareModal(false)} className="p-4 bg-secondary rounded-full hover:rotate-90 transition-all"><X /></button>
+                <h2 className="text-4xl font-black uppercase tracking-tighter italic">Analysis</h2>
+                <button onClick={() => setShowCompareModal(false)} className="p-4 bg-secondary rounded-full"><X /></button>
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 {compareList.map((p) => (
                   <div key={p.id} className="space-y-8 bg-card border border-border rounded-[3rem] p-8 relative shadow-xl">
-                    <div className="aspect-video rounded-[2rem] overflow-hidden">
-                        <img src={p.image_url} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="space-y-4">
+                    <img src={p.image_url} className="w-full h-48 object-cover rounded-[2rem]" />
+                    <div className="space-y-2">
                         <h3 className="text-xl font-black uppercase leading-none truncate">{p.title}</h3>
                         <p className="text-4xl font-black text-primary italic">₹{p.rent}</p>
                     </div>
-                    <div className="space-y-6 pt-6 border-t border-border">
-                        <div className="flex justify-between items-center"><span className="text-[9px] font-black uppercase opacity-40">Living Space</span><span className="text-xs font-bold">{p.sqft || "--"} SqFt</span></div>
-                        <div className="flex justify-between items-center"><span className="text-[9px] font-black uppercase opacity-40">Config</span><span className="text-xs font-bold">{p.bedrooms} BHK / {p.bathrooms} Bath</span></div>
-                        <div className="flex justify-between items-center"><span className="text-[9px] font-black uppercase opacity-40">Locality</span><span className="text-xs font-bold truncate ml-4 capitalize">{p.area}</span></div>
-                    </div>
                     <div className="space-y-4 pt-6 border-t border-border">
-                        <span className="text-[9px] font-black uppercase opacity-40">Amenities</span>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex justify-between text-[10px] font-bold uppercase"><span>Size</span><span>{p.sqft} SqFt</span></div>
+                        <div className="flex justify-between text-[10px] font-bold uppercase"><span>Type</span><span>{p.bedrooms}BHK</span></div>
+                        <div className="flex flex-wrap gap-1">
                             {p.features?.map((f: string) => (
-                                <div key={f} className="flex items-center gap-1 bg-secondary px-3 py-1.5 rounded-lg text-[8px] font-black uppercase">
-                                    <Check className="w-3 h-3 text-green-500" /> {f}
-                                </div>
+                                <span key={f} className="text-[7px] font-black bg-secondary px-2 py-1 rounded-md uppercase">{f}</span>
                             ))}
                         </div>
                     </div>
-                    <button onClick={() => navigate(`/property/${p.id}`)} className="w-full py-4 bg-foreground text-background rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-all">Go to Page</button>
+                    <button onClick={() => navigate(`/property/${p.id}`)} className="w-full py-4 bg-foreground text-background rounded-2xl text-[10px] font-black uppercase">View Details</button>
                   </div>
                 ))}
               </div>
