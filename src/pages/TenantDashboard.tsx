@@ -1,12 +1,4 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { Search, MapPin, Star, Heart, 
-  Wifi, Car, Droplets, Shield, Wind, Zap, Dumbbell,
-  SlidersHorizontal, LayoutGrid, List, ArrowLeftRight, X, Check, Loader2} 
-from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useSearchParams, useNavigate } from "react-router-dom";
-import { toast } from "sonner";
+import { useState, useEffect } from "react";import { supabase } from "@/integrations/supabase/client";import { Search, MapPin, Star, Heart,Wifi, Car, Droplets, Shield, Wind, Zap, Dumbbell,SlidersHorizontal, LayoutGrid, List, ArrowLeftRight, X, Check, Loader2} from "lucide-react";import { motion, AnimatePresence } from "framer-motion";import { useSearchParams, useNavigate } from "react-router-dom";import { toast } from "sonner";
 const TenantDashboard = () => { const [searchParams] = useSearchParams();const navigate = useNavigate();const [properties, setProperties] = useState<any[]>([]); const [filteredProps, setFilteredProps] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);  const [searchQuery, setSearchQuery] = useState("");const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [compareList, setCompareList] = useState<any[]>([]);const [showCompareModal, setShowCompareModal] = useState(false);
