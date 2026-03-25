@@ -1,147 +1,42 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { 
-  Search, MapPin, Star, Heart, 
+import { Search, MapPin, Star, Heart, 
   Wifi, Car, Droplets, Shield, Wind, Zap, Dumbbell,
-  SlidersHorizontal, LayoutGrid, List, ArrowLeftRight, X, Check, Loader2
-} from "lucide-react";
+  SlidersHorizontal, LayoutGrid, List, ArrowLeftRight, X, Check, Loader2} 
+from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-
-const TenantDashboard = () => {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  
-  const [properties, setProperties] = useState<any[]>([]);
-  const [filteredProps, setFilteredProps] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  
-  // Comparison States
-  const [compareList, setCompareList] = useState<any[]>([]);
-  const [showCompareModal, setShowCompareModal] = useState(false);
-
-  const filterTags = [
-    { id: "WiFi", icon: Wifi },
-    { id: "Parking", icon: Car },
-    { id: "Drinking Water", icon: Droplets },
-    { id: "AC", icon: Wind },
-    { id: "CCTV", icon: Shield },
-    { id: "Gym", icon: Dumbbell },
-    { id: "Power Backup", icon: Zap },
-  ];
-
-  useEffect(() => {
-    fetchProperties();
-  }, []);
-
-  const fetchProperties = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("properties")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (!error && data) {
-      setProperties(data);
-      setFilteredProps(data);
-    }
-    setLoading(false);
-  };
-
-  // --- COMBINED FILTER & TAG-AWARE KNAPSACK LOGIC ---
-  useEffect(() => {
-    let result = [...properties];
-
-    // 1. Basic Text Search
+const TenantDashboard = () => { const [searchParams] = useSearchParams();const navigate = useNavigate();const [properties, setProperties] = useState<any[]>([]); const [filteredProps, setFilteredProps] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);  const [searchQuery, setSearchQuery] = useState("");const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [compareList, setCompareList] = useState<any[]>([]);const [showCompareModal, setShowCompareModal] = useState(false);
+  const filterTags = [{ id: "WiFi", icon: Wifi },{ id: "Parking", icon: Car },{ id: "Drinking Water", icon: Droplets },{ id: "AC", icon: Wind },{ id: "CCTV", icon: Shield },{ id: "Gym", icon: Dumbbell },{ id: "Power Backup", icon: Zap },];
+  useEffect(() => {fetchProperties();}, []);const fetchProperties = async () => {setLoading(true);const { data, error } = await supabase .from("properties") .select("*") .order("created_at", { ascending: false });
+    if (!error && data) {setProperties(data);setFilteredProps(data);}
+    setLoading(false);};
+  useEffect(() => {let result = [...properties];
     if (searchQuery) {
-      result = result.filter(p => 
-        p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.area.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    const maxRent = searchParams.get("maxRent");
-    const isOptimized = searchParams.get("optimize") === "true";
-
-    if (maxRent && isOptimized) {
-      // 2. TAG-AWARE KNAPSACK OPTIMIZATION
-      const W = parseInt(maxRent);
-      const n = result.length;
-      
-      // dp[i][w] stores max value
+      result = result.filter(p => p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||p.area.toLowerCase().includes(searchQuery.toLowerCase()));}
+    const maxRent = searchParams.get("maxRent");const isOptimized = searchParams.get("optimize") === "true";
+    if (maxRent && isOptimized) { const W = parseInt(maxRent); const n = result.length;
       let dp = Array(n + 1).fill(0).map(() => Array(W + 1).fill(0));
-
-      for (let i = 1; i <= n; i++) {
-        const item = result[i - 1];
-        const weight = item.rent;
-        
-        // VALUE CALCULATION:
-        // Base: Rating * 10
-        // Bonus: +15 for each SELECTED tag the property actually has
-        // Bonus: +2 for each general facility it has (to break ties)
-        const matchingSelectedTags = item.features?.filter((f: string) => 
-          selectedTags.includes(f)
+      for (let i = 1; i <= n; i++) {const item = result[i - 1];const weight = item.rent;const matchingSelectedTags = item.features?.filter((f: string) => selectedTags.includes(f)
         ).length || 0;
-
-        const baseValue = (item.rating || 4.0) * 10;
-        const selectionBonus = matchingSelectedTags * 15;
-        const generalBonus = (item.features?.length || 0) * 2;
-        
-        const totalValue = baseValue + selectionBonus + generalBonus;
-
+        const baseValue = (item.rating || 4.0) * 10;const selectionBonus = matchingSelectedTags * 15;const generalBonus = (item.features?.length || 0) * 2;const totalValue = baseValue + selectionBonus + generalBonus;
         for (let w = 0; w <= W; w++) {
-          if (weight <= w) {
-            dp[i][w] = Math.max(totalValue + dp[i - 1][w - weight], dp[i - 1][w]);
-          } else {
-            dp[i][w] = dp[i - 1][w];
-          }
-        }
-      }
-
-      // Backtrack to find the optimal units
-      let selected: any[] = [];
-      let currW = W;
+          if (weight <= w) {dp[i][w] = Math.max(totalValue + dp[i - 1][w - weight], dp[i - 1][w]);}
+           else {dp[i][w] = dp[i - 1][w];}}}
+      let selected: any[] = [];let currW = W;
       for (let i = n; i > 0 && currW > 0; i--) {
-        if (dp[i][currW] !== dp[i - 1][currW]) {
-          selected.push(result[i - 1]);
-          currW -= result[i - 1].rent;
-        }
-      }
+        if (dp[i][currW] !== dp[i - 1][currW]) {selected.push(result[i - 1]);currW -= result[i - 1].rent;}}
       result = selected;
-    } else {
-      // 3. Standard Filtering (When not in Optimized Budget Mode)
-      if (selectedTags.length > 0) {
-        result = result.filter(p => 
-          selectedTags.every(tag => p.features?.includes(tag))
-        );
-      }
-    }
-
+    } else {if (selectedTags.length > 0) {result = result.filter(p => selectedTags.every(tag => p.features?.includes(tag)));}}
     setFilteredProps(result);
   }, [searchQuery, selectedTags, properties, searchParams]);
-
-  const toggleTag = (tagId: string) => {
-    setSelectedTags(prev => 
-      prev.includes(tagId) ? prev.filter(t => t !== tagId) : [...prev, tagId]
-    );
-  };
-
-  const toggleCompare = (p: any, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (compareList.find(item => item.id === p.id)) {
-      setCompareList(compareList.filter(item => item.id !== p.id));
-    } else {
-      if (compareList.length >= 3) {
-        toast.error("Limit Reached", { description: "You can compare up to 3 units." });
-        return;
-      }
-      setCompareList([...compareList, p]);
-    }
-  };
-
+  const toggleTag = (tagId: string) => {setSelectedTags(prev =>prev.includes(tagId) ? prev.filter(t => t !== tagId) : [...prev, tagId]);};
+  const toggleCompare = (p: any, e: React.MouseEvent) => {e.stopPropagation();
+    if (compareList.find(item => item.id === p.id)) {setCompareList(compareList.filter(item => item.id !== p.id));
+    } else {if (compareList.length >= 3) {toast.error("Limit Reached", { description: "You can compare up to 3 units." });return;}setCompareList([...compareList, p]); }};
   return (
     <div className="min-h-screen bg-background pb-32">
       {/* HEADER & SEARCH */}
@@ -175,8 +70,7 @@ const TenantDashboard = () => {
                   selectedTags.includes(tag.id)
                     ? "bg-primary border-primary text-white shadow-lg shadow-primary/20 scale-105"
                     : "bg-card border-border text-muted-foreground hover:border-primary/50"
-                }`}
-              >
+                }`}>
                 <tag.icon className="w-3.5 h-3.5" />
                 {tag.id}
               </button>
@@ -336,7 +230,4 @@ const TenantDashboard = () => {
         )}
       </AnimatePresence>
     </div>
-  );
-};
-
-export default TenantDashboard;
+  );};export default TenantDashboard;
