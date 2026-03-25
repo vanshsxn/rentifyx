@@ -1,100 +1,14 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { 
-  Building2, Trash2, Check, X, Plus, Image as ImageIcon, 
-  Loader2, Edit3, Sparkles, MessageSquare, Clock, 
-  CheckCircle2, AlertCircle, Calendar, Zap, Droplets, Wifi, Car, Shield, Wind, Dumbbell
-} from "lucide-react";
-import { toast } from "sonner";
-import { useAuth } from "@/contexts/AuthContext";
-import { motion, AnimatePresence } from "framer-motion";
-
-const LandlordDashboard = () => {
-  const { user } = useAuth();
-  const [properties, setProperties] = useState<any[]>([]);
-  const [requests, setRequests] = useState<any[]>([]);
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  
-  // Available tags for the landlord to choose from
-  const availableTags = [
-    { id: "WiFi", icon: Wifi },
-    { id: "Parking", icon: Car },
-    { id: "Drinking Water", icon: Droplets },
-    { id: "AC", icon: Wind },
-    { id: "CCTV", icon: Shield },
-    { id: "Gym", icon: Dumbbell },
-    { id: "Power Backup", icon: Zap },
-  ];
-
-  const [form, setForm] = useState({
-    title: "", address: "", area: "", rent: "", 
-    gallery_images: "", bedrooms: "1", bathrooms: "1",
-    sqft: "", tags: [] as string[], phone: "", 
-    contact_email: "", video_url: "", vr_url: "",
-  });
-
-  const fetchData = async () => {
-    if (!user) return;
-    setLoading(true);
-    
-    const { data: props } = await supabase
-      .from("properties")
-      .select("*")
-      .eq("landlord_id", user.id)
-      .order("created_at", { ascending: false });
-
-    setProperties(props || []);
-
-    if (props && props.length > 0) {
-      const propIds = props.map(p => p.id);
-      const { data: reqs } = await supabase
-        .from("tenant_requests")
-        .select(`*, properties (title, image_url)`)
-        .in("property_id", propIds)
-        .order("created_at", { ascending: false });
-      setRequests(reqs || []);
-    }
-    setLoading(false);
-  };
-
+import { useState, useEffect } from "react";import { supabase } from "@/integrations/supabase/client";import {Building2, Trash2, Check, X, Plus, Image as ImageIcon,Loader2, Edit3, Sparkles, MessageSquare, Clock,CheckCircle2, AlertCircle, Calendar, Zap, Droplets, Wifi, Car, Shield, Wind, Dumbbell} from "lucide-react";import { toast } from "sonner";import { useAuth } from "@/contexts/AuthContext";import { motion, AnimatePresence } from "framer-motion";
+const LandlordDashboard = () => {  const { user } = useAuth();const [properties, setProperties] = useState<any[]>([]);const [requests, setRequests] = useState<any[]>([]);const [showForm, setShowForm] = useState(false);const [editingId, setEditingId] = useState<string | null>(null);const [loading, setLoading] = useState(true);
+  const availableTags = [{ id: "WiFi", icon: Wifi },{ id: "Parking", icon: Car },{ id: "Drinking Water", icon: Droplets },{ id: "AC", icon: Wind },{ id: "CCTV", icon: Shield },{ id: "Gym", icon: Dumbbell },{ id: "Power Backup", icon: Zap },];
+  const [form, setForm] = useState({ title: "", address: "", area: "", rent: "", gallery_images: "", bedrooms: "1", bathrooms: "1", sqft: "", tags: [] as string[], phone: "",contact_email: "", video_url: "", vr_url: "",});
+  const fetchData = async () => {if (!user) return;setLoading(true);const { data: props } = await supabase.from("properties").select("*").eq("landlord_id", user.id).order("created_at", { ascending: false }); setProperties(props || []);
+    if (props && props.length > 0) {const propIds = props.map(p => p.id);const { data: reqs } = await supabase .from("tenant_requests").select(`*, properties (title, image_url)`).in("property_id", propIds).order("created_at", { ascending: false });setRequests(reqs || []);}setLoading(false);};
   useEffect(() => { fetchData(); }, [user]);
-
-  const toggleTag = (tagId: string) => {
-    setForm(prev => ({
-      ...prev,
-      tags: prev.tags.includes(tagId) 
-        ? prev.tags.filter(t => t !== tagId) 
-        : [...prev.tags, tagId]
-    }));
-  };
-
-  const handleEdit = (p: any) => {
-    setEditingId(p.id);
-    setForm({
-      title: p.title,
-      address: p.address,
-      area: p.area,
-      rent: p.rent.toString(),
-      gallery_images: p.images?.join(", ") || p.image_url || "",
-      bedrooms: (p.bedrooms || 1).toString(),
-      bathrooms: (p.bathrooms || 1).toString(),
-      sqft: (p.sqft || "").toString(),
-      tags: p.features || [], // Mapping features to our tags array
-      phone: p.phone || "",
-      contact_email: p.contact_email || "",
-      video_url: p.video_url || "",
-      vr_url: p.vr_url || "",
-    });
-    setShowForm(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-
+  const toggleTag = (tagId: string) => {setForm(prev => ({...prev,tags: prev.tags.includes(tagId) ? prev.tags.filter(t => t !== tagId) : [...prev.tags, tagId]}));};
+  const handleEdit = (p: any) => {setEditingId(p.id);setForm({title: p.title,address: p.address,area: p.area,rent: p.rent.toString(),gallery_images: p.images?.join(", ") || p.image_url || "",bedrooms: (p.bedrooms || 1).toString(),bathrooms: (p.bathrooms || 1).toString(),sqft: (p.sqft || "").toString(),tags: p.features || [],phone: p.phone || "",contact_email: p.contact_email || "",video_url: p.video_url || "",vr_url: p.vr_url || "",});
+    setShowForm(true);window.scrollTo({ top: 0, behavior: 'smooth' });};
+  const handleSubmit = async (e: React.FormEvent) => {e.preventDefault();if (!user) return;
     const imageArray = form.gallery_images.split(",").map(url => url.trim()).filter(url => url.startsWith("http"));
     const payload = {
       title: form.title,
