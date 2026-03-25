@@ -1,159 +1,196 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Building2, Users, AlertTriangle, Shield, Phone, Mail, Eye } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { 
+  Building2, Users, Shield, Eye, Trash2, 
+  UserRound, UserCheck, Search, Loader2, X 
+} from "lucide-react";
+import { toast } from "sonner";
 
 interface PropertyRow {
   id: string;
   title: string;
-  address: string;
   area: string;
   rent: number;
   image_url: string | null;
-  has_vr: boolean;
-  vr_url: string | null;
-  phone: string | null;
-  contact_email: string | null;
   landlord_id: string;
+}
+
+interface UserRow {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  role: 'landlord' | 'tenant' | 'admin';
   created_at: string;
 }
 
 const AdminDashboard = () => {
   const [properties, setProperties] = useState<PropertyRow[]>([]);
+  const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<'properties' | 'users'>('properties');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
 
-  useEffect(() => {
-    const fetch = async () => {
-      const { data } = await supabase.from("properties").select("*").order("created_at", { ascending: false });
-      setProperties((data as PropertyRow[]) || []);
-      setLoading(false);
-    };
-    fetch();
-  }, []);
+  const fetchData = async () => {
+    setLoading(true);
+    const { data: props } = await supabase.from("properties").select("*").order("created_at", { ascending: false });
+    const { data: profiles } = await supabase.from("profiles").select("*").order("created_at", { ascending: false });
+    setProperties((props as PropertyRow[]) || []);
+    setUsers((profiles as UserRow[]) || []);
+    setLoading(false);
+  };
 
-  // Compute area stats
-  const areaStats = properties.reduce((acc, p) => {
-    acc[p.area] = (acc[p.area] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-  const trendingData = Object.entries(areaStats).map(([area, count]) => ({ area, count })).sort((a, b) => b.count - a.count);
+  useEffect(() => { fetchData(); }, []);
 
-  const rentByArea = properties.reduce((acc, p) => {
-    if (!acc[p.area]) acc[p.area] = { total: 0, count: 0 };
-    acc[p.area].total += Number(p.rent);
-    acc[p.area].count += 1;
-    return acc;
-  }, {} as Record<string, { total: number; count: number }>);
-  const rentData = Object.entries(rentByArea).map(([area, v]) => ({ area, avgRent: Math.round(v.total / v.count) }));
+  const handleDeleteProperty = async (id: string) => {
+    if (!window.confirm("Delete this property permanently?")) return;
+    const { error } = await supabase.from("properties").delete().eq("id", id);
+    if (!error) {
+      toast.success("Property removed");
+      setProperties(prev => prev.filter(p => p.id !== id));
+    }
+  };
+
+  const handleDeleteUser = async (id: string) => {
+    if (!window.confirm("Delete this user and all their data?")) return;
+    const { error } = await supabase.from("profiles").delete().eq("id", id);
+    if (!error) {
+      toast.success("User deleted");
+      setUsers(prev => prev.filter(u => u.id !== id));
+    }
+  };
+
+  // --- Filtering Logic ---
+  const filteredProperties = properties.filter(p => 
+    p.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    p.area.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredUsers = users.filter(u => {
+    const matchesSearch = (u.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) || u.email?.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesRole = roleFilter === "all" || u.role === roleFilter;
+    return matchesSearch && matchesRole;
+  });
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Admin Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">Monitor all properties and landlord data.</p>
-      </div>
+    <div className="p-8 space-y-8 bg-background min-h-screen">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-black uppercase tracking-tighter italic">Platform Control</h1>
+          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em]">Master Administrator Access</p>
+        </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-card border border-border rounded-lg p-4 card-shadow text-center">
-          <Building2 className="w-5 h-5 mx-auto text-primary mb-1" />
-          <p className="text-2xl font-bold text-foreground">{properties.length}</p>
-          <p className="text-xs text-muted-foreground">Total Properties</p>
-        </div>
-        <div className="bg-card border border-border rounded-lg p-4 card-shadow text-center">
-          <Eye className="w-5 h-5 mx-auto text-primary mb-1" />
-          <p className="text-2xl font-bold text-foreground">{properties.filter(p => p.has_vr).length}</p>
-          <p className="text-xs text-muted-foreground">With VR</p>
-        </div>
-        <div className="bg-card border border-border rounded-lg p-4 card-shadow text-center">
-          <Users className="w-5 h-5 mx-auto text-primary mb-1" />
-          <p className="text-2xl font-bold text-foreground">{new Set(properties.map(p => p.landlord_id)).size}</p>
-          <p className="text-xs text-muted-foreground">Landlords</p>
-        </div>
-        <div className="bg-card border border-border rounded-lg p-4 card-shadow text-center">
-          <Shield className="w-5 h-5 mx-auto text-primary mb-1" />
-          <p className="text-2xl font-bold text-foreground">{Object.keys(areaStats).length}</p>
-          <p className="text-xs text-muted-foreground">Areas</p>
+        {/* Search & Tabs */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+            <input 
+              type="text" 
+              placeholder={`Search ${tab}...`}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-11 pr-4 py-3 bg-secondary/50 border border-border rounded-2xl text-[11px] font-bold uppercase w-64 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+            />
+          </div>
+          <div className="bg-secondary p-1 rounded-2xl flex border border-border">
+            <button onClick={() => {setTab('properties'); setSearchQuery("");}} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${tab === 'properties' ? 'bg-background shadow-lg text-primary' : 'opacity-40'}`}>Units</button>
+            <button onClick={() => {setTab('users'); setSearchQuery("");}} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${tab === 'users' ? 'bg-background shadow-lg text-primary' : 'opacity-40'}`}>Users</button>
+          </div>
         </div>
       </div>
 
-      {/* Charts */}
-      {trendingData.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-card border border-border rounded-lg p-5 card-shadow space-y-4">
-            <h3 className="text-sm font-semibold text-foreground">Properties by Area</h3>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={trendingData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="area" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="bg-card border border-border rounded-lg p-5 card-shadow space-y-4">
-            <h3 className="text-sm font-semibold text-foreground">Avg Rent by Area</h3>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={rentData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="area" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(value: number) => [`₹${value.toLocaleString()}`, "Avg Rent"]} />
-                <Bar dataKey="avgRent" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+      {/* Hero Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label="Total Listings" value={properties.length} sub="Live properties" />
+        <StatCard label="Landlords" value={users.filter(u=>u.role==='landlord').length} sub="Verified hosts" />
+        <StatCard label="Tenants" value={users.filter(u=>u.role==='tenant').length} sub="Active seekers" />
+        <StatCard label="Coverage" value={new Set(properties.map(p=>p.area)).size} sub="Targeted areas" />
+      </div>
+
+      {/* User Role Filters (Only show on Users Tab) */}
+      {tab === 'users' && (
+        <div className="flex gap-2">
+          {['all', 'landlord', 'tenant'].map((r) => (
+            <button 
+              key={r}
+              onClick={() => setRoleFilter(r)}
+              className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase border transition-all ${roleFilter === r ? 'bg-foreground text-background border-foreground' : 'border-border text-muted-foreground hover:border-primary'}`}
+            >
+              {r}
+            </button>
+          ))}
         </div>
       )}
 
-      {/* All Properties Table with Contact Info */}
-      <section className="space-y-4">
-        <h2 className="text-lg font-semibold text-foreground">All Properties (with contact info)</h2>
+      <div className="bg-card border border-border rounded-[2.5rem] overflow-hidden shadow-2xl">
         {loading ? (
-          <div className="text-center py-8 text-muted-foreground text-sm">Loading...</div>
+          <div className="py-20 flex flex-col items-center gap-4">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <span className="text-[10px] font-black uppercase tracking-widest animate-pulse">Syncing Database...</span>
+          </div>
         ) : (
-          <div className="bg-card border border-border rounded-lg overflow-hidden card-shadow">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-secondary/50">
-                    <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Property</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Area</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Rent</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">VR</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Phone</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Email</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {properties.map((p) => (
-                    <tr key={p.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <img src={p.image_url || "https://via.placeholder.com/40"} alt="" className="w-10 h-10 rounded-md object-cover" />
-                          <span className="font-medium text-foreground">{p.title}</span>
-                        </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-secondary/30 border-b border-border">
+                <tr className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                  <th className="px-8 py-5">{tab === 'properties' ? 'Listing Details' : 'Identity'}</th>
+                  <th className="px-8 py-5">{tab === 'properties' ? 'Location' : 'Status'}</th>
+                  <th className="px-8 py-5">{tab === 'properties' ? 'Revenue' : 'Joined'}</th>
+                  <th className="px-8 py-5 text-right">Control</th>
+                </tr>
+              </thead>
+              <tbody className="text-[11px] font-bold uppercase">
+                {tab === 'properties' ? (
+                  filteredProperties.map(p => (
+                    <tr key={p.id} className="border-b border-border/50 hover:bg-secondary/10 transition-colors group">
+                      <td className="px-8 py-4 flex items-center gap-4">
+                        <img src={p.image_url || ""} className="w-12 h-12 rounded-2xl object-cover grayscale group-hover:grayscale-0 transition-all" />
+                        <span className="tracking-tight">{p.title}</span>
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">{p.area}</td>
-                      <td className="px-4 py-3 text-foreground">₹{Number(p.rent).toLocaleString()}</td>
-                      <td className="px-4 py-3">
-                        <span className={`text-xs px-2 py-0.5 rounded-md font-medium ${p.has_vr ? "bg-green-500/10 text-green-600" : "bg-orange-500/10 text-orange-500"}`}>
-                          {p.has_vr ? "Yes" : "No"}
+                      <td className="px-8 py-4 text-muted-foreground">{p.area}</td>
+                      <td className="px-8 py-4 text-primary font-black">₹{p.rent.toLocaleString()}</td>
+                      <td className="px-8 py-4 text-right">
+                        <button onClick={() => handleDeleteProperty(p.id)} className="p-3 text-red-500 hover:bg-red-500 hover:text-white rounded-2xl transition-all"><Trash2 className="w-4 h-4" /></button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  filteredUsers.map(u => (
+                    <tr key={u.id} className="border-b border-border/50 hover:bg-secondary/10 transition-colors">
+                      <td className="px-8 py-4">
+                        <p className="font-black tracking-tight">{u.full_name || 'Incognito User'}</p>
+                        <p className="text-[9px] text-muted-foreground lowercase font-medium">{u.email}</p>
+                      </td>
+                      <td className="px-8 py-4">
+                        <span className={`px-3 py-1 rounded-full text-[8px] border ${u.role === 'landlord' ? 'bg-blue-500/5 border-blue-500/20 text-blue-600' : 'bg-green-500/5 border-green-500/20 text-green-600'}`}>
+                          {u.role}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs">{p.phone || "—"}</td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs">{p.contact_email || "—"}</td>
+                      <td className="px-8 py-4 text-muted-foreground">{new Date(u.created_at).toLocaleDateString()}</td>
+                      <td className="px-8 py-4 text-right">
+                        <button onClick={() => handleDeleteUser(u.id)} className="p-3 text-red-500 hover:bg-red-500 hover:text-white rounded-2xl transition-all"><Trash2 className="w-4 h-4" /></button>
+                      </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  ))
+                )}
+              </tbody>
+            </table>
+            {(tab === 'properties' ? filteredProperties : filteredUsers).length === 0 && (
+              <div className="py-20 text-center text-[10px] font-black uppercase text-muted-foreground tracking-widest">No results found for "{searchQuery}"</div>
+            )}
           </div>
         )}
-      </section>
+      </div>
     </div>
   );
 };
+
+const StatCard = ({ label, value, sub }: any) => (
+  <div className="bg-card border border-border p-8 rounded-[2.5rem] shadow-sm hover:border-primary/30 transition-all group">
+    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1 group-hover:text-primary transition-colors">{label}</p>
+    <p className="text-4xl font-black tracking-tighter mb-1">{value}</p>
+    <p className="text-[8px] font-bold uppercase text-muted-foreground/50">{sub}</p>
+  </div>
+);
 
 export default AdminDashboard;
