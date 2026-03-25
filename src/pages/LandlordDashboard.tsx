@@ -10,57 +10,13 @@ const LandlordDashboard = () => {  const { user } = useAuth();const [properties,
     setShowForm(true);window.scrollTo({ top: 0, behavior: 'smooth' });};
   const handleSubmit = async (e: React.FormEvent) => {e.preventDefault();if (!user) return;
     const imageArray = form.gallery_images.split(",").map(url => url.trim()).filter(url => url.startsWith("http"));
-    const payload = {
-      title: form.title,
-      address: form.address,
-      area: form.area,
-      rent: parseFloat(form.rent),
-      image_url: imageArray[0] || null,
-      images: imageArray,
-      bedrooms: parseInt(form.bedrooms),
-      bathrooms: parseInt(form.bathrooms),
-      sqft: parseInt(form.sqft) || 0,
-      features: form.tags, // Saving tags into the features column
-      phone: form.phone || null,
-      contact_email: form.contact_email || null,
-      video_url: form.video_url || null,
-      vr_url: form.vr_url || null,
-      has_vr: !!form.vr_url,
-    };
-
-    const { error } = editingId 
-      ? await supabase.from("properties").update(payload).eq("id", editingId)
-      : await supabase.from("properties").insert({ ...payload, landlord_id: user.id });
-
-    if (error) {
-      toast.error("Operation failed", { description: error.message });
-    } else {
-      toast.success(editingId ? "Property updated!" : "Property added!");
-      resetForm();
-      fetchData();
-    }
-  };
-
-  const resetForm = () => {
-    setShowForm(false);
-    setEditingId(null);
-    setForm({ 
-      title: "", address: "", area: "", rent: "", 
-      gallery_images: "", bedrooms: "1", bathrooms: "1", 
-      sqft: "", tags: [], phone: "", 
-      contact_email: "", video_url: "", vr_url: "" 
-    });
-  };
-
-  const handleDelete = async (id: string) => {
-    const { error } = await supabase.from("properties").delete().eq("id", id);
-    if (!error) { toast.success("Property deleted"); fetchData(); }
-  };
-
-  if (loading && !showForm) {
-    return <div className="h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
-  }
-
+    const payload = {title: form.title,address: form.address,area: form.area,rent: parseFloat(form.rent),image_url: imageArray[0] || null,images: imageArray,bedrooms: parseInt(form.bedrooms),bathrooms: parseInt(form.bathrooms),sqft: parseInt(form.sqft) || 0,features: form.tags,phone: form.phone || null,contact_email: form.contact_email || null,video_url: form.video_url || null,vr_url: form.vr_url || null,has_vr: !!form.vr_url,};
+    const { error } = editingId ? await supabase.from("properties").update(payload).eq("id", editingId) : await supabase.from("properties").insert({ ...payload, landlord_id: user.id });
+    if (error) {toast.error("Operation failed", { description: error.message });} 
+    else {toast.success(editingId ? "Property updated!" : "Property added!"); resetForm(); fetchData();}};
+  const resetForm = () => {setShowForm(false);setEditingId(null);setForm({title: "", address: "", area: "", rent: "",gallery_images: "", bedrooms: "1", bathrooms: "1",sqft: "", tags: [], phone: "",contact_email: "", video_url: "", vr_url: "" });};
+  const handleDelete = async (id: string) => {const { error } = await supabase.from("properties").delete().eq("id", id);if (!error) { toast.success("Property deleted"); fetchData(); }};
+  if (loading && !showForm) {return <div className="h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;}
   return (
     <div className="space-y-12 max-w-6xl mx-auto px-4 py-8">
       {/* HEADER SECTION */}
@@ -214,7 +170,4 @@ const LandlordDashboard = () => {  const { user } = useAuth();const [properties,
 
       {/* REQUESTS SECTION REMAINS SAME AS PREVIOUS */}
     </div>
-  );
-};
-
-export default LandlordDashboard;
+  );};export default LandlordDashboard;
