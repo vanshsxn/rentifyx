@@ -5,12 +5,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { 
   ArrowLeft, Star, MapPin, Bed, Bath, Maximize, 
   Phone, MessageCircle, CalendarDays, Share2, 
-  Heart, Sparkles, Building2, Loader2, X, ArrowRight
+  Heart, Sparkles, Building2, Loader2, X, ArrowRight, CheckCircle2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
-// --- Sub-component for Recommendations ---
+// --- Sub-component for Recommendations (Similar Properties) ---
 const RecommendedSection = ({ currentProperty }: { currentProperty: any }) => {
   const [recommendations, setRecommendations] = useState<any[]>([]);
 
@@ -20,8 +20,7 @@ const RecommendedSection = ({ currentProperty }: { currentProperty: any }) => {
         .from("properties")
         .select("*")
         .neq("id", currentProperty.id)
-        .gte("rent", currentProperty.rent - 5000)
-        .lte("rent", currentProperty.rent + 5000)
+        .or(`area.eq.${currentProperty.area},and(rent.gte.${currentProperty.rent - 5000},rent.lte.${currentProperty.rent + 5000})`)
         .limit(4);
       
       if (data) setRecommendations(data);
@@ -35,7 +34,7 @@ const RecommendedSection = ({ currentProperty }: { currentProperty: any }) => {
     <section className="mt-20 space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-black uppercase tracking-[0.3em] flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-primary" /> Recommended for You
+          <Sparkles className="w-4 h-4 text-primary" /> Similar Properties
         </h2>
         <Link to="/" className="text-[10px] font-black uppercase text-primary flex items-center gap-1 hover:underline">
           View All <ArrowRight className="w-3 h-3" />
@@ -43,7 +42,6 @@ const RecommendedSection = ({ currentProperty }: { currentProperty: any }) => {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {recommendations.map((item) => {
-          // Fallback logic for recommendation thumbnails
           const thumb = item.images && item.images.length > 0 ? item.images[0] : item.image_url;
           return (
             <Link 
@@ -132,35 +130,80 @@ const PropertyDetail = () => {
   const [loading, setLoading] = useState(true);
   const [activeImg, setActiveImg] = useState(0);
   const [showVR, setShowVR] = useState(false);
+  const [hasRequested, setHasRequested] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [requestLoading, setRequestLoading] = useState(false);
 
   useEffect(() => {
     const getData = async () => {
       if (!id) return;
       const { data } = await supabase.from("properties").select("*").eq("id", id).single();
-      if (data) setP(data);
+      if (data) {
+        setP(data);
+        if (user) {
+          // Check for existing request
+          const { data: existingReq } = await supabase
+            .from("tenant_requests")
+            .select("id")
+            .eq("property_id", id)
+            .eq("tenant_id", user.id)
+            .single();
+          if (existingReq) setHasRequested(true);
+
+          // Check for wishlist status
+          const { data: fav } = await supabase
+            .from("favorites")
+            .select("id")
+            .eq("property_id", id)
+            .eq("user_id", user.id)
+            .single();
+          if (fav) setIsFavorite(true);
+        }
+      }
       setLoading(false);
       window.scrollTo(0, 0);
     };
     getData();
-  }, [id]);
+  }, [id, user]);
+
+  const toggleWishlist = async () => {
+    if (!user) return toast.error("Please login to save favorites");
+    if (isFavorite) {
+      await supabase.from("favorites").delete().eq("property_id", id).eq("user_id", user.id);
+      setIsFavorite(false);
+      toast.success("Removed from Wishlist");
+    } else {
+      await supabase.from("favorites").insert({ property_id: id, user_id: user.id });
+      setIsFavorite(true);
+      toast.success("Added to Wishlist");
+    }
+  };
 
   const handleChatRequest = async () => {
-    if (!user) return toast.error("Please sign in to chat");
+    if (!user) return toast.error("Please sign in to contact the landlord");
+    if (hasRequested) return toast.info("Request already pending");
+    
+    setRequestLoading(true);
     const { error } = await supabase.from("tenant_requests").insert({
       property_id: id,
       tenant_id: user.id,
-      message: `User ${user.email} started a chat for ${p.title}`,
-      status: "pending"
+      message: `Hi, I am interested in ${p.title}. Let's chat!`,
+      status: "pending",
+      urgent: false
     });
-    if (error) toast.error("Failed to send request");
-    else toast.success("Chat request sent!");
+
+    if (error) {
+      toast.error("Failed to send request");
+    } else {
+      setHasRequested(true);
+      toast.success("Request sent to Landlord!");
+    }
+    setRequestLoading(false);
   };
 
   if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   if (!p) return <div className="h-screen flex items-center justify-center font-black uppercase">Unit Not Found</div>;
 
-  // --- Multi-Image Logic ---
-  // If 'images' array exists and has content, use it. Otherwise, fallback to the single 'image_url'.
   const displayImages = p.images && p.images.length > 0 ? p.images : [p.image_url || "/placeholder.jpg"];
 
   return (
@@ -172,7 +215,9 @@ const PropertyDetail = () => {
             <span className="text-[10px] font-black uppercase tracking-widest truncate max-w-[150px]">{p.title}</span>
         </div>
         <div className="flex gap-4">
-          <button onClick={() => toast.success("Saved")}><Heart className="w-5 h-5 hover:fill-red-500 hover:text-red-500 transition-colors"/></button>
+          <button onClick={toggleWishlist}>
+            <Heart className={`w-5 h-5 transition-colors ${isFavorite ? "fill-red-500 text-red-500" : "hover:text-red-500"}`}/>
+          </button>
           <button onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success("Link copied"); }}><Share2 className="w-5 h-5"/></button>
         </div>
       </header>
@@ -180,7 +225,6 @@ const PropertyDetail = () => {
       <main className="max-w-[1400px] mx-auto px-6 py-10">
         <div className="grid grid-cols-1 md:grid-cols-[80px,1fr,400px] gap-8 items-start mb-20">
           
-          {/* IMAGE THUMBNAILS SIDEBAR */}
           <div className="flex flex-row md:flex-col gap-3 overflow-x-auto scrollbar-hide py-2">
             {displayImages.map((img: string, i: number) => (
               <button 
@@ -194,7 +238,6 @@ const PropertyDetail = () => {
             ))}
           </div>
 
-          {/* MAIN DISPLAY (IMAGE OR VR) */}
           <div className="relative aspect-square bg-black rounded-[2.5rem] overflow-hidden border border-border shadow-2xl">
             <AnimatePresence mode="wait">
               {showVR ? (
@@ -220,7 +263,6 @@ const PropertyDetail = () => {
             )}
           </div>
 
-          {/* PROPERTY INFO & ACTIONS */}
           <div className="space-y-8">
             <div className="space-y-2">
                 <div className="flex justify-between items-start">
@@ -267,8 +309,14 @@ const PropertyDetail = () => {
                 <button onClick={() => window.open(`tel:${p.phone}`)} className="flex items-center justify-center gap-2 py-4 rounded-2xl bg-foreground text-background font-black text-[10px] uppercase tracking-widest hover:opacity-90 active:scale-95 transition-all">
                   <Phone className="w-4 h-4"/> Call
                 </button>
-                <button onClick={handleChatRequest} className="flex items-center justify-center gap-2 py-4 rounded-2xl bg-secondary font-black text-[10px] uppercase tracking-widest hover:bg-secondary/80 active:scale-95 transition-all">
-                  <MessageCircle className="w-4 h-4"/> Chat Now
+                <button 
+                  onClick={handleChatRequest} 
+                  disabled={requestLoading || hasRequested}
+                  className={`flex items-center justify-center gap-2 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 
+                  ${hasRequested ? "bg-green-500/10 text-green-500" : "bg-secondary hover:bg-secondary/80"}`}
+                >
+                  {requestLoading ? <Loader2 className="w-4 h-4 animate-spin"/> : hasRequested ? <CheckCircle2 className="w-4 h-4"/> : <MessageCircle className="w-4 h-4"/>}
+                  {hasRequested ? "Request Sent" : "Chat Now"}
                 </button>
                 <button className="col-span-2 flex items-center justify-center gap-2 py-4 rounded-2xl bg-secondary font-black text-[10px] uppercase tracking-widest hover:bg-secondary/80 active:scale-95 transition-all">
                   <CalendarDays className="w-4 h-4"/> Schedule Visit
