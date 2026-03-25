@@ -84,7 +84,7 @@ export type Database = {
           has_vr: boolean | null
           id: string
           image_url: string | null
-          images: string[] | null // ADDED FOR MULTI-IMAGE SUPPORT
+          images: string[] | null
           is_featured: boolean | null
           landlord_id: string
           phone: string | null
@@ -108,7 +108,7 @@ export type Database = {
           has_vr?: boolean | null
           id?: string
           image_url?: string | null
-          images?: string[] | null // ADDED FOR MULTI-IMAGE SUPPORT
+          images?: string[] | null
           is_featured?: boolean | null
           landlord_id: string
           phone?: string | null
@@ -132,7 +132,7 @@ export type Database = {
           has_vr?: boolean | null
           id?: string
           image_url?: string | null
-          images?: string[] | null // ADDED FOR MULTI-IMAGE SUPPORT
+          images?: string[] | null
           is_featured?: boolean | null
           landlord_id?: string
           phone?: string | null
