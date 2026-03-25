@@ -3,8 +3,8 @@ import { motion } from "framer-motion";
 
 const words = [
   { text: "RentifyX", color: "text-black" },
-  { text: "Find.", color: "text-blue-600" },
-  { text: "Rent.", color: "text-red-600" },
+  { text: "Find", color: "text-blue-600" },
+  { text: "Rent", color: "text-red-600" },
   { text: "Relax.", color: "text-green-600" },
 ];
 
