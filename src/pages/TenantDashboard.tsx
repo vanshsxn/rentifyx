@@ -51,11 +51,11 @@ const TenantDashboard = () => {
     setLoading(false);
   };
 
-  // --- ADVANCED FILTER & KNAPSACK LOGIC ---
+  // --- COMBINED FILTER & TAG-AWARE KNAPSACK LOGIC ---
   useEffect(() => {
     let result = [...properties];
 
-    // 1. Text Search Filter (Area or Title)
+    // 1. Basic Text Search
     if (searchQuery) {
       result = result.filter(p => 
         p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -67,27 +67,30 @@ const TenantDashboard = () => {
     const isOptimized = searchParams.get("optimize") === "true";
 
     if (maxRent && isOptimized) {
-      // 2. KNAPSACK OPTIMIZATION (Budget + Facilities)
+      // 2. TAG-AWARE KNAPSACK OPTIMIZATION
       const W = parseInt(maxRent);
       const n = result.length;
       
-      // dp[i][w] will store the maximum "Value Score" we can get
+      // dp[i][w] stores max value
       let dp = Array(n + 1).fill(0).map(() => Array(W + 1).fill(0));
 
       for (let i = 1; i <= n; i++) {
         const item = result[i - 1];
         const weight = item.rent;
         
-        // COMPOSITE VALUE CALCULATION:
-        // Base value from Rating + Bonus for every facility tag matching user selection
-        const matchingTagsCount = item.features?.filter((f: string) => 
+        // VALUE CALCULATION:
+        // Base: Rating * 10
+        // Bonus: +15 for each SELECTED tag the property actually has
+        // Bonus: +2 for each general facility it has (to break ties)
+        const matchingSelectedTags = item.features?.filter((f: string) => 
           selectedTags.includes(f)
         ).length || 0;
 
-        // If no tags selected, value is just Rating. If tags selected, tags give 5pts each.
         const baseValue = (item.rating || 4.0) * 10;
-        const tagBonus = selectedTags.length > 0 ? (matchingTagsCount * 8) : (item.features?.length || 0) * 2;
-        const totalValue = baseValue + tagBonus;
+        const selectionBonus = matchingSelectedTags * 15;
+        const generalBonus = (item.features?.length || 0) * 2;
+        
+        const totalValue = baseValue + selectionBonus + generalBonus;
 
         for (let w = 0; w <= W; w++) {
           if (weight <= w) {
@@ -98,7 +101,7 @@ const TenantDashboard = () => {
         }
       }
 
-      // Backtracking to retrieve the optimal properties
+      // Backtrack to find the optimal units
       let selected: any[] = [];
       let currW = W;
       for (let i = n; i > 0 && currW > 0; i--) {
@@ -109,7 +112,7 @@ const TenantDashboard = () => {
       }
       result = selected;
     } else {
-      // 3. Standard Tag Filtering (if budget optimizer is OFF)
+      // 3. Standard Filtering (When not in Optimized Budget Mode)
       if (selectedTags.length > 0) {
         result = result.filter(p => 
           selectedTags.every(tag => p.features?.includes(tag))
@@ -132,7 +135,7 @@ const TenantDashboard = () => {
       setCompareList(compareList.filter(item => item.id !== p.id));
     } else {
       if (compareList.length >= 3) {
-        toast.error("Limit Reached", { description: "Select up to 3 units." });
+        toast.error("Limit Reached", { description: "You can compare up to 3 units." });
         return;
       }
       setCompareList([...compareList, p]);
@@ -158,7 +161,7 @@ const TenantDashboard = () => {
             <div className="flex items-center gap-2 bg-foreground text-background px-6 py-4 rounded-2xl">
                <SlidersHorizontal className="w-4 h-4" />
                <span className="text-[10px] font-black uppercase tracking-widest">
-                {searchParams.get("optimize") === "true" ? "Budget Optimized" : "Standard View"}
+                {searchParams.get("optimize") === "true" ? "AI Budget Mode" : "Standard View"}
                </span>
             </div>
           </div>
@@ -185,15 +188,15 @@ const TenantDashboard = () => {
       <main className="max-w-6xl mx-auto px-4 mt-10">
         <div className="flex items-center justify-between mb-8 px-2">
             <div>
-                <h2 className="text-2xl font-black uppercase tracking-tighter italic">Top Matches</h2>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{filteredProps.length} Units Found</p>
+                <h2 className="text-2xl font-black uppercase tracking-tighter italic">Recommended Units</h2>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{filteredProps.length} Results matched your criteria</p>
             </div>
         </div>
 
         {loading ? (
             <div className="h-64 flex flex-col items-center justify-center gap-4">
                 <Loader2 className="w-10 h-10 animate-spin text-primary" />
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Running Algorithms...</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Sorting by value...</span>
             </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -202,8 +205,8 @@ const TenantDashboard = () => {
                 <motion.div 
                   layout
                   key={p.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
                   className="group cursor-pointer space-y-4"
                   onClick={() => navigate(`/property/${p.id}`)}
@@ -249,8 +252,10 @@ const TenantDashboard = () => {
                     </div>
                     <div className="flex flex-wrap gap-1.5 pt-1">
                         {p.features?.map((f: string) => (
-                            <span key={f} className={`text-[8px] font-black uppercase tracking-tighter px-2 py-1 rounded-md border ${
-                                selectedTags.includes(f) ? "bg-primary/10 border-primary/30 text-primary" : "bg-secondary border-border/50 text-muted-foreground/60"
+                            <span key={f} className={`text-[8px] font-black uppercase tracking-tighter px-2 py-1 rounded-md border transition-colors ${
+                                selectedTags.includes(f) 
+                                ? "bg-primary/20 border-primary/40 text-primary ring-1 ring-primary/20" 
+                                : "bg-secondary border-border/50 text-muted-foreground/60"
                             }`}>{f}</span>
                         ))}
                     </div>
@@ -263,8 +268,8 @@ const TenantDashboard = () => {
 
         {!loading && filteredProps.length === 0 && (
             <div className="py-32 text-center">
-                <h3 className="text-xl font-black uppercase">No Optimal Matches</h3>
-                <p className="text-xs text-muted-foreground font-bold uppercase mt-2">Try increasing your budget or removing some facility tags.</p>
+                <h3 className="text-xl font-black uppercase tracking-tighter">No Units Fit This Budget</h3>
+                <p className="text-xs text-muted-foreground font-bold uppercase mt-2">Try adjusting your price range or decreasing facility requirements.</p>
             </div>
         )}
       </main>
@@ -277,7 +282,7 @@ const TenantDashboard = () => {
               <div className="flex items-center gap-4 px-4">
                 <div className="flex -space-x-4">
                   {compareList.map((p) => (
-                    <img key={p.id} src={p.image_url} className="w-10 h-10 rounded-full border-2 border-foreground object-cover" />
+                    <img key={p.id} src={p.image_url} className="w-10 h-10 rounded-full border-2 border-foreground object-cover shadow-lg" />
                   ))}
                 </div>
                 <div className="hidden sm:block">
@@ -286,8 +291,8 @@ const TenantDashboard = () => {
                 </div>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => setCompareList([])} className="px-4 py-2 text-[10px] font-black uppercase opacity-50">Clear</button>
-                <button onClick={() => setShowCompareModal(true)} className="bg-primary text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest">Compare</button>
+                <button onClick={() => setCompareList([])} className="px-4 py-2 text-[10px] font-black uppercase opacity-50 hover:opacity-100 transition-opacity">Clear</button>
+                <button onClick={() => setShowCompareModal(true)} className="bg-primary text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all">Compare Now</button>
               </div>
             </div>
           </motion.div>
@@ -300,27 +305,29 @@ const TenantDashboard = () => {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-background/95 backdrop-blur-2xl p-6 overflow-y-auto">
             <div className="max-w-6xl mx-auto py-10 space-y-12">
               <div className="flex justify-between items-center">
-                <h2 className="text-4xl font-black uppercase tracking-tighter italic">Analysis</h2>
-                <button onClick={() => setShowCompareModal(false)} className="p-4 bg-secondary rounded-full"><X /></button>
+                <h2 className="text-4xl font-black uppercase tracking-tighter italic">Unit Analysis</h2>
+                <button onClick={() => setShowCompareModal(false)} className="p-4 bg-secondary rounded-full hover:rotate-90 transition-all"><X /></button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 {compareList.map((p) => (
                   <div key={p.id} className="space-y-8 bg-card border border-border rounded-[3rem] p-8 relative shadow-xl">
-                    <img src={p.image_url} className="w-full h-48 object-cover rounded-[2rem]" />
+                    <div className="aspect-video rounded-[2rem] overflow-hidden">
+                        <img src={p.image_url} className="w-full h-full object-cover" />
+                    </div>
                     <div className="space-y-2">
                         <h3 className="text-xl font-black uppercase leading-none truncate">{p.title}</h3>
                         <p className="text-4xl font-black text-primary italic">₹{p.rent}</p>
                     </div>
                     <div className="space-y-4 pt-6 border-t border-border">
-                        <div className="flex justify-between text-[10px] font-bold uppercase"><span>Size</span><span>{p.sqft} SqFt</span></div>
-                        <div className="flex justify-between text-[10px] font-bold uppercase"><span>Type</span><span>{p.bedrooms}BHK</span></div>
+                        <div className="flex justify-between text-[10px] font-bold uppercase"><span className="opacity-40">Living Space</span><span>{p.sqft || "--"} SqFt</span></div>
+                        <div className="flex justify-between text-[10px] font-bold uppercase"><span className="opacity-40">Configuration</span><span>{p.bedrooms} BHK</span></div>
                         <div className="flex flex-wrap gap-1">
                             {p.features?.map((f: string) => (
-                                <span key={f} className="text-[7px] font-black bg-secondary px-2 py-1 rounded-md uppercase">{f}</span>
+                                <span key={f} className="text-[7px] font-black bg-secondary px-2 py-1 rounded-md uppercase border border-border/50">{f}</span>
                             ))}
                         </div>
                     </div>
-                    <button onClick={() => navigate(`/property/${p.id}`)} className="w-full py-4 bg-foreground text-background rounded-2xl text-[10px] font-black uppercase">View Details</button>
+                    <button onClick={() => navigate(`/property/${p.id}`)} className="w-full py-4 bg-foreground text-background rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-all">View Full Page</button>
                   </div>
                 ))}
               </div>
