@@ -11,7 +11,9 @@ import DevToolsBlocker from "@/components/DevToolsBlocker";
 import MobileNav from "@/components/MobileNav";
 import { Loader2 } from "lucide-react";
 
-// Lazy load pages for faster initial load
+// --- 1. ADD THIS LAZY IMPORT ---
+const ProfileDashboard = lazy(() => import("@/pages/Profile")); 
+
 const Landing = lazy(() => import("@/pages/Landing"));
 const Properties = lazy(() => import("@/pages/Properties"));
 const PropertyDetail = lazy(() => import("@/pages/PropertyDetail"));
@@ -24,7 +26,6 @@ const NotFound = lazy(() => import("@/pages/NotFound"));
 
 const queryClient = new QueryClient();
 
-// Clean, Minimalist Page Loader Replacement
 const PageLoader = () => (
   <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
     <Loader2 className="w-10 h-10 text-primary animate-spin opacity-80" />
@@ -34,10 +35,8 @@ const PageLoader = () => (
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
-
   if (loading) return <PageLoader />;
   if (!user) return <Navigate to="/auth" replace />;
-
   return <>{children}</>;
 };
 
@@ -46,7 +45,6 @@ const AppContent = () => {
   const [role, setRole] = useState<"tenant" | "landlord" | "admin">("tenant");
 
   if (showSplash) {
-    // Note: Make sure to check SplashScreen.tsx and remove the BoxLoader from there too
     return <SplashScreen onComplete={() => setShowSplash(false)} />;
   }
 
@@ -57,6 +55,20 @@ const AppContent = () => {
         <Route path="/properties" element={<Properties />} />
         <Route path="/property/:id" element={<PropertyDetail />} />
         <Route path="/auth" element={<Auth />} />
+        
+        {/* --- 2. ADD THE PROFILE ROUTE HERE --- */}
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              {/* Wrapping in Layout keeps your sidebar/header consistent if needed */}
+              <Layout role={role} onRoleChange={setRole}>
+                <ProfileDashboard />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/tenant"
           element={

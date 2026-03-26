@@ -1,58 +1,222 @@
-import { useState, useEffect } from "react";import { supabase } from "@/integrations/supabase/client";import { Search, MapPin, Star, Heart,Wifi, Car, Droplets, Shield, Wind, Zap, Dumbbell,SlidersHorizontal, LayoutGrid, List, ArrowLeftRight, X, Check, Loader2} from "lucide-react";import { motion, AnimatePresence } from "framer-motion";import { useSearchParams, useNavigate } from "react-router-dom";import { toast } from "sonner";
-const TenantDashboard = () => { const [searchParams] = useSearchParams();const navigate = useNavigate();const [properties, setProperties] = useState<any[]>([]); const [filteredProps, setFilteredProps] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);  const [searchQuery, setSearchQuery] = useState("");const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [compareList, setCompareList] = useState<any[]>([]);const [showCompareModal, setShowCompareModal] = useState(false);
-  const filterTags = [{ id: "WiFi", icon: Wifi },{ id: "Parking", icon: Car },{ id: "Drinking Water", icon: Droplets },{ id: "AC", icon: Wind },{ id: "CCTV", icon: Shield },{ id: "Gym", icon: Dumbbell },{ id: "Power Backup", icon: Zap },];
-  useEffect(() => {fetchProperties();}, []);const fetchProperties = async () => {setLoading(true);const { data, error } = await supabase .from("properties") .select("*") .order("created_at", { ascending: false });
-    if (!error && data) {setProperties(data);setFilteredProps(data);}
-    setLoading(false);};
-  useEffect(() => {let result = [...properties];
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { 
+  Search, MapPin, Star, Heart, Wifi, Car, Droplets, Shield, Wind, Zap, 
+  Dumbbell, SlidersHorizontal, LayoutGrid, List, ArrowLeftRight, X, 
+  Check, Loader2, User, Settings, LogOut, ChevronDown, Repeat
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+
+const TenantDashboard = () => {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const [properties, setProperties] = useState<any[]>([]);
+  const [filteredProps, setFilteredProps] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [compareList, setCompareList] = useState<any[]>([]);
+  const [showCompareModal, setShowCompareModal] = useState(false);
+  
+  // NEW: Profile Menu State
+  const [showUserMenu, setShowUserMenu] = useState(false);
+
+  const filterTags = [
+    { id: "WiFi", icon: Wifi },
+    { id: "Parking", icon: Car },
+    { id: "Drinking Water", icon: Droplets },
+    { id: "AC", icon: Wind },
+    { id: "CCTV", icon: Shield },
+    { id: "Gym", icon: Dumbbell },
+    { id: "Power Backup", icon: Zap },
+  ];
+
+  useEffect(() => {
+    fetchProperties();
+  }, []);
+
+  const fetchProperties = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("properties")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (!error && data) {
+      setProperties(data);
+      setFilteredProps(data);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    let result = [...properties];
+
     if (searchQuery) {
-      result = result.filter(p => p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||p.area.toLowerCase().includes(searchQuery.toLowerCase()));}
-    const maxRent = searchParams.get("maxRent");const isOptimized = searchParams.get("optimize") === "true";
-    if (maxRent && isOptimized) { const W = parseInt(maxRent); const n = result.length;
+      result = result.filter(p => 
+        p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.area.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    const maxRent = searchParams.get("maxRent");
+    const isOptimized = searchParams.get("optimize") === "true";
+
+    if (maxRent && isOptimized) {
+      const W = parseInt(maxRent);
+      const n = result.length;
       let dp = Array(n + 1).fill(0).map(() => Array(W + 1).fill(0));
-      for (let i = 1; i <= n; i++) {const item = result[i - 1];const weight = item.rent;const matchingSelectedTags = item.features?.filter((f: string) => selectedTags.includes(f)
+
+      for (let i = 1; i <= n; i++) {
+        const item = result[i - 1];
+        const weight = item.rent;
+        const matchingSelectedTags = item.features?.filter((f: string) => 
+          selectedTags.includes(f)
         ).length || 0;
-        const baseValue = (item.rating || 4.0) * 10;const selectionBonus = matchingSelectedTags * 15;const generalBonus = (item.features?.length || 0) * 2;const totalValue = baseValue + selectionBonus + generalBonus;
+
+        const baseValue = (item.rating || 4.0) * 10;
+        const selectionBonus = matchingSelectedTags * 15;
+        const generalBonus = (item.features?.length || 0) * 2;
+        const totalValue = baseValue + selectionBonus + generalBonus;
+
         for (let w = 0; w <= W; w++) {
-          if (weight <= w) {dp[i][w] = Math.max(totalValue + dp[i - 1][w - weight], dp[i - 1][w]);}
-           else {dp[i][w] = dp[i - 1][w];}}}
-      let selected: any[] = [];let currW = W;
+          if (weight <= w) {
+            dp[i][w] = Math.max(totalValue + dp[i - 1][w - weight], dp[i - 1][w]);
+          } else {
+            dp[i][w] = dp[i - 1][w];
+          }
+        }
+      }
+
+      let selected: any[] = [];
+      let currW = W;
       for (let i = n; i > 0 && currW > 0; i--) {
-        if (dp[i][currW] !== dp[i - 1][currW]) {selected.push(result[i - 1]);currW -= result[i - 1].rent;}}
+        if (dp[i][currW] !== dp[i - 1][currW]) {
+          selected.push(result[i - 1]);
+          currW -= result[i - 1].rent;
+        }
+      }
       result = selected;
-    } else {if (selectedTags.length > 0) {result = result.filter(p => selectedTags.every(tag => p.features?.includes(tag)));}}
+    } else {
+      if (selectedTags.length > 0) {
+        result = result.filter(p => selectedTags.every(tag => p.features?.includes(tag)));
+      }
+    }
     setFilteredProps(result);
   }, [searchQuery, selectedTags, properties, searchParams]);
-  const toggleTag = (tagId: string) => {setSelectedTags(prev =>prev.includes(tagId) ? prev.filter(t => t !== tagId) : [...prev, tagId]);};
-  const toggleCompare = (p: any, e: React.MouseEvent) => {e.stopPropagation();
-    if (compareList.find(item => item.id === p.id)) {setCompareList(compareList.filter(item => item.id !== p.id));
-    } else {if (compareList.length >= 3) {toast.error("Limit Reached", { description: "You can compare up to 3 units." });return;}setCompareList([...compareList, p]); }};
+
+  const toggleTag = (tagId: string) => {
+    setSelectedTags(prev => 
+      prev.includes(tagId) ? prev.filter(t => t !== tagId) : [...prev, tagId]
+    );
+  };
+
+  const toggleCompare = (p: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (compareList.find(item => item.id === p.id)) {
+      setCompareList(compareList.filter(item => item.id !== p.id));
+    } else {
+      if (compareList.length >= 3) {
+        toast.error("Limit Reached", { description: "You can compare up to 3 units." });
+        return;
+      }
+      setCompareList([...compareList, p]);
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
+  };
+
   return (
     <div className="min-h-screen bg-background pb-32">
-      {/* HEADER & SEARCH */}
+      {/* HEADER & SEARCH WITH INTEGRATED PROFILE */}
       <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/50 px-4 py-6">
         <div className="max-w-6xl mx-auto space-y-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1 group">
+          <div className="flex flex-col md:flex-row gap-4 items-center">
+            {/* SEARCH BAR */}
+            <div className="relative flex-1 group w-full">
               <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
               <input 
                 type="text" 
                 placeholder="Search by area or PG name..." 
-                className="w-full bg-secondary/50 border-none rounded-2xl py-4 pl-12 pr-6 text-sm font-bold focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                className="w-full bg-secondary/50 border-none rounded-[1.5rem] py-4 pl-12 pr-6 text-sm font-bold focus:ring-2 focus:ring-primary/20 transition-all outline-none"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <div className="flex items-center gap-2 bg-foreground text-background px-6 py-4 rounded-2xl">
-               <SlidersHorizontal className="w-4 h-4" />
-               <span className="text-[10px] font-black uppercase tracking-widest">
+
+            {/* AI MODE INDICATOR */}
+            <div className="hidden lg:flex items-center gap-3 bg-foreground text-background px-6 py-3.5 rounded-[1.5rem]">
+               <SlidersHorizontal className="w-4 h-4 text-primary" />
+               <span className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap">
                 {searchParams.get("optimize") === "true" ? "AI Budget Mode" : "Standard View"}
                </span>
             </div>
+
+            {/* INTEGRATED USER PROFILE TRIGGER */}
+            <div className="relative">
+              <button 
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center gap-3 bg-card border border-border/50 p-1.5 pr-4 rounded-[1.5rem] hover:shadow-lg hover:border-primary/30 transition-all group"
+              >
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
+                  <User className="w-5 h-5" />
+                </div>
+                <div className="text-left hidden sm:block">
+                  <p className="text-[10px] font-black uppercase tracking-tighter leading-none italic">Account</p>
+                  <p className="text-[8px] font-bold text-muted-foreground uppercase mt-1 tracking-tighter">Tenant Mode</p>
+                </div>
+                <ChevronDown className={`w-3 h-3 text-muted-foreground transition-transform duration-300 ${showUserMenu ? 'rotate-180' : ''}`} />
+              </button>
+
+              <AnimatePresence>
+                {showUserMenu && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 15, scale: 0.95 }}
+                    className="absolute right-0 mt-3 w-64 bg-card border border-border/50 rounded-[2rem] shadow-2xl p-3 z-50 backdrop-blur-2xl overflow-hidden"
+                  >
+                    <div className="p-4 mb-2 bg-secondary/30 rounded-2xl">
+                        <p className="text-[10px] font-black uppercase tracking-widest opacity-40 italic">Quick Actions</p>
+                    </div>
+
+                    <button 
+                      onClick={() => navigate("/profile")}
+                      className="w-full flex items-center gap-3 p-4 hover:bg-primary/10 rounded-xl transition-all group"
+                    >
+                      <Settings className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Edit Profile</span>
+                    </button>
+
+                    <button 
+                      onClick={() => navigate("/landlord")}
+                      className="w-full flex items-center gap-3 p-4 hover:bg-primary/10 rounded-xl transition-all group"
+                    >
+                      <Repeat className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Switch to Landlord</span>
+                    </button>
+                    
+                    <div className="h-[1px] bg-border/50 my-2 mx-2" />
+                    
+                    <button 
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-3 p-4 hover:bg-red-500/10 rounded-xl transition-all group"
+                    >
+                      <LogOut className="w-4 h-4 text-red-500" />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-red-500">Sign Out</span>
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
 
+          {/* FACILITY FILTERS */}
           <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
             {filterTags.map((tag) => (
               <button
@@ -154,7 +318,7 @@ const TenantDashboard = () => { const [searchParams] = useSearchParams();const n
 
         {!loading && filteredProps.length === 0 && (
             <div className="py-32 text-center">
-                <h3 className="text-xl font-black uppercase tracking-tighter">No Units Fit This Budget</h3>
+                <h3 className="text-xl font-black uppercase tracking-tighter italic">No Units Fit This Budget</h3>
                 <p className="text-xs text-muted-foreground font-bold uppercase mt-2">Try adjusting your price range or decreasing facility requirements.</p>
             </div>
         )}
@@ -168,11 +332,11 @@ const TenantDashboard = () => { const [searchParams] = useSearchParams();const n
               <div className="flex items-center gap-4 px-4">
                 <div className="flex -space-x-4">
                   {compareList.map((p) => (
-                    <img key={p.id} src={p.image_url} className="w-10 h-10 rounded-full border-2 border-foreground object-cover shadow-lg" />
+                    <img key={p.id} src={p.image_url} className="w-10 h-10 rounded-full border-2 border-foreground object-cover shadow-lg" alt="compare" />
                   ))}
                 </div>
                 <div className="hidden sm:block">
-                    <p className="text-[10px] font-black uppercase tracking-widest leading-none">Side-By-Side Mode</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest leading-none italic">Side-By-Side Mode</p>
                     <p className="text-[8px] font-bold opacity-50 uppercase mt-1">{compareList.length}/3 Units Selected</p>
                 </div>
               </div>
@@ -198,7 +362,7 @@ const TenantDashboard = () => { const [searchParams] = useSearchParams();const n
                 {compareList.map((p) => (
                   <div key={p.id} className="space-y-8 bg-card border border-border rounded-[3rem] p-8 relative shadow-xl">
                     <div className="aspect-video rounded-[2rem] overflow-hidden">
-                        <img src={p.image_url} className="w-full h-full object-cover" />
+                        <img src={p.image_url} className="w-full h-full object-cover" alt="property" />
                     </div>
                     <div className="space-y-2">
                         <h3 className="text-xl font-black uppercase leading-none truncate">{p.title}</h3>
@@ -222,4 +386,7 @@ const TenantDashboard = () => { const [searchParams] = useSearchParams();const n
         )}
       </AnimatePresence>
     </div>
-  );};export default TenantDashboard;
+  );
+};
+
+export default TenantDashboard;
