@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   Search, MapPin, Star, Heart, Wifi, Car, Droplets, Shield, Wind, Zap, 
   Dumbbell, SlidersHorizontal, ArrowLeftRight, X, 
-  Loader2, User, Settings, LogOut, ChevronDown, Camera, Edit3
+  Loader2, User, Settings, LogOut, ChevronDown, Camera, Edit3, Sparkles
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -27,22 +27,11 @@ const TenantDashboard = () => {
   const isOptimized = searchParams.get("optimize") === "true";
   const hasMaxRent = searchParams.get("maxRent");
 
-  // Dynamic Header Title Logic
   const getPageTitle = () => {
     if (isOptimized || hasMaxRent) return "Smart Budget Analyzer";
     if (userProfile?.role === 'landlord') return "Landlord Hub";
-    return "Properties";
+    return "Marketplace";
   };
-
-  const filterTags = [
-    { id: "WiFi", icon: Wifi },
-    { id: "Parking", icon: Car },
-    { id: "Drinking Water", icon: Droplets },
-    { id: "AC", icon: Wind },
-    { id: "CCTV", icon: Shield },
-    { id: "Gym", icon: Dumbbell },
-    { id: "Power Backup", icon: Zap },
-  ];
 
   useEffect(() => {
     fetchInitialData();
@@ -50,6 +39,7 @@ const TenantDashboard = () => {
 
   const fetchInitialData = async () => {
     setLoading(true);
+    // Using explicit casting as requested
     const { data: { user } } = await (supabase.auth as any).getUser();
     
     if (user) {
@@ -81,31 +71,28 @@ const TenantDashboard = () => {
     let result = [...properties];
 
     if (selectedTags.length > 0) {
-      result = result.filter(p => 
-        selectedTags.every(tag => p.features?.includes(tag))
-      );
+      result = result.filter(p => {
+        const combined = [...(p.features || []), ...(p.tags || [])];
+        return selectedTags.every(tag => combined.includes(tag));
+      });
     }
 
     const maxRentParam = searchParams.get("maxRent");
-    const isOptimized = searchParams.get("optimize") === "true";
     const numericQuery = !isNaN(Number(searchQuery)) && searchQuery !== "" ? Number(searchQuery) : null;
     const budgetLimit = numericQuery || (maxRentParam ? Number(maxRentParam) : null);
 
     if (isOptimized || budgetLimit) {
       const limit = budgetLimit || Infinity;
       const withinBudget = result.filter(p => Number(p.rent) <= limit);
-      const exactMatches = withinBudget.filter(p => Number(p.rent) === limit);
+      
+      result = withinBudget.sort((a, b) => {
+        const aCount = [...(a.features || []), ...(a.tags || [])].length;
+        const bCount = [...(b.features || []), ...(b.tags || [])].length;
+        return bCount - aCount;
+      });
 
-      if (exactMatches.length > 0) {
-        const bestExact = exactMatches.sort((a, b) => 
-          (b.features?.length || 0) - (a.features?.length || 0)
-        )[0];
-        result = [bestExact];
-      } else {
-        const bestValueUnder = withinBudget.sort((a, b) => 
-          (b.features?.length || 0) - (a.features?.length || 0)
-        )[0];
-        result = bestValueUnder ? [bestValueUnder] : [];
+      if (isOptimized && result.length > 0) {
+        result = [result[0]];
       }
     } 
     else if (searchQuery && isNaN(Number(searchQuery))) {
@@ -116,7 +103,7 @@ const TenantDashboard = () => {
     }
 
     setFilteredProps(result);
-  }, [searchQuery, selectedTags, properties, searchParams]);
+  }, [searchQuery, selectedTags, properties, searchParams, isOptimized]);
 
   const handleLogout = async () => {
     await (supabase.auth as any).signOut();
@@ -136,19 +123,28 @@ const TenantDashboard = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center gap-4">
+        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground">Syncing Database...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background pb-32">
       <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/50 px-4 py-4 md:py-6">
         <div className="max-w-6xl mx-auto flex flex-col gap-4">
           <div className="flex items-center justify-between">
-            {/* UPDATED DYNAMIC HEADER TITLE */}
-            <h1 className="text-xl font-black italic tracking-tighter uppercase text-primary">
+            <h1 className="text-xl font-black italic tracking-tighter uppercase text-primary flex items-center gap-2">
+              {isOptimized && <Sparkles className="w-5 h-5" />}
               {getPageTitle()}
             </h1>
 
             <div className="relative">
-              <button onClick={() => setShowUserMenu(!showUserMenu)} className="flex items-center gap-2 bg-card p-1 pr-3 rounded-full border border-border/50">
-                <img src={userProfile?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"} className="w-8 h-8 rounded-full object-cover" />
+              <button onClick={() => setShowUserMenu(!showUserMenu)} className="flex items-center gap-2 bg-card p-1 pr-3 rounded-full border border-border/50 hover:border-primary/50 transition-colors">
+                <img src={userProfile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userProfile?.full_name || 'User'}`} className="w-8 h-8 rounded-full object-cover border border-border" />
                 <ChevronDown className={`w-3 h-3 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
               </button>
 
@@ -177,36 +173,64 @@ const TenantDashboard = () => {
       </div>
 
       <main className="max-w-6xl mx-auto px-4 mt-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredProps.length > 0 ? (
-            filteredProps.map((p) => (
-              <motion.div key={p.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-[2rem] overflow-hidden border border-border/50 group cursor-pointer" onClick={() => navigate(`/property/${p.id}`)}>
-                <div className="relative aspect-video overflow-hidden">
-                  <img src={p.image_url || "/placeholder.jpg"} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                  <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-lg text-[8px] font-black uppercase italic">
-                    {p.features?.length || 0} Amenities
-                  </div>
-                </div>
-                <div className="p-6 space-y-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-black uppercase tracking-tight text-lg leading-none">{p.title}</h3>
-                      <p className="text-[10px] text-muted-foreground font-bold mt-2 uppercase flex items-center gap-1"><MapPin className="w-3 h-3 text-primary"/> {p.area}</p>
+            filteredProps.map((p, idx) => {
+              const amenitiesCount = Array.from(new Set([...(p.features || []), ...(p.tags || [])])).length;
+              
+              return (
+                <motion.div 
+                  key={p.id} 
+                  initial={{ opacity: 0, y: 20 }} 
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                  className="bg-card rounded-[2.5rem] overflow-hidden border border-border/50 group cursor-pointer hover:shadow-2xl hover:shadow-primary/5 transition-all" 
+                  onClick={() => navigate(`/property/${p.id}`)}
+                >
+                  <div className="relative aspect-[4/3] overflow-hidden">
+                    <img src={p.image_url || "/placeholder.jpg"} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                    <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-4 py-2 rounded-2xl text-[10px] font-black text-white">
+                      ₹{p.rent.toLocaleString()}
                     </div>
-                    <p className="text-xl font-black italic">₹{p.rent.toLocaleString()}</p>
+                    <div className="absolute bottom-4 left-4 bg-primary/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-wider text-primary-foreground shadow-lg">
+                      {amenitiesCount} Premium Features
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 text-orange-500 text-xs font-black">
-                     <Star className="w-3 h-3 fill-current" /> {p.rating || "0.0"}
+                  <div className="p-7 space-y-4">
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="flex-1">
+                        <h3 className="font-black uppercase tracking-tighter text-lg leading-tight group-hover:text-primary transition-colors">{p.title}</h3>
+                        <p className="text-[10px] text-muted-foreground font-bold mt-2 uppercase flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-primary"/> {p.area}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 bg-orange-500/10 text-orange-600 px-2 py-1 rounded-lg text-[10px] font-black">
+                         <Star className="w-3 h-3 fill-current" /> {p.rating?.toFixed(1) || "0.0"}
+                      </div>
+                    </div>
+                    <div className="pt-4 border-t border-border/50 flex items-center justify-between">
+                       <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">Monthly Rent</span>
+                       <span className="text-sm font-black italic tracking-tight">₹{p.rent.toLocaleString()}</span>
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            ))
+                </motion.div>
+              );
+            })
           ) : (
-            <div className="col-span-full py-20 text-center space-y-4">
-              <div className="w-16 h-16 bg-secondary rounded-full flex items-center justify-center mx-auto">
-                <Search className="w-8 h-8 text-muted-foreground" />
+            <div className="col-span-full py-32 text-center space-y-6">
+              <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mx-auto shadow-inner">
+                <Search className="w-8 h-8 text-muted-foreground opacity-50" />
               </div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">No units found matching your criteria.</p>
+              <div className="space-y-2">
+                <p className="text-[12px] font-black uppercase tracking-[0.3em] text-foreground">No Units Found</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase">Try adjusting your budget or search area</p>
+              </div>
+              <button 
+                onClick={() => { setSearchQuery(""); navigate("/tenant-dashboard"); }}
+                className="px-8 py-3 bg-secondary rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-border transition-colors"
+              >
+                Reset Filters
+              </button>
             </div>
           )}
         </div>
@@ -215,17 +239,30 @@ const TenantDashboard = () => {
       <AnimatePresence>
         {isEditingProfile && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-background/95 backdrop-blur-xl flex items-center justify-center p-4">
-            <div className="bg-card border border-border w-full max-w-md rounded-[3rem] p-10 space-y-8 shadow-2xl relative">
-              <button onClick={() => setIsEditingProfile(false)} className="absolute top-6 right-6 p-2 bg-secondary rounded-full"><X className="w-4 h-4"/></button>
-              <div className="text-center">
-                <h2 className="text-2xl font-black uppercase italic tracking-tighter">Profile Info</h2>
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }} 
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-card border border-border w-full max-w-md rounded-[3rem] p-10 space-y-8 shadow-2xl relative"
+            >
+              <button onClick={() => setIsEditingProfile(false)} className="absolute top-8 right-8 p-2 bg-secondary hover:bg-border rounded-full transition-colors"><X className="w-4 h-4"/></button>
+              <div className="text-center space-y-2">
+                <h2 className="text-2xl font-black uppercase italic tracking-tighter">Profile Settings</h2>
+                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Manage your identity</p>
               </div>
               <div className="space-y-4">
-                <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Full Name" className="w-full bg-secondary/50 p-4 rounded-2xl border-none outline-none font-bold" />
-                <input type="text" value={editAvatar} onChange={(e) => setEditAvatar(e.target.value)} placeholder="Avatar URL" className="w-full bg-secondary/50 p-4 rounded-2xl border-none outline-none font-bold text-xs" />
-                <button onClick={handleSaveProfile} className="w-full py-5 bg-primary text-white rounded-2xl font-black uppercase tracking-[0.2em]">Save Changes</button>
+                <div className="space-y-1.5">
+                  <label className="text-[8px] font-black uppercase tracking-widest ml-4 text-muted-foreground">Full Name</label>
+                  <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Enter Name" className="w-full bg-secondary/50 p-4 rounded-2xl border border-transparent focus:border-primary/20 outline-none font-bold" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[8px] font-black uppercase tracking-widest ml-4 text-muted-foreground">Avatar Image URL</label>
+                  <input type="text" value={editAvatar} onChange={(e) => setEditAvatar(e.target.value)} placeholder="https://..." className="w-full bg-secondary/50 p-4 rounded-2xl border border-transparent focus:border-primary/20 outline-none font-bold text-xs" />
+                </div>
+                <button onClick={handleSaveProfile} className="w-full py-5 bg-primary text-primary-foreground rounded-[1.5rem] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all mt-4">
+                  Save Preferences
+                </button>
               </div>
-            </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

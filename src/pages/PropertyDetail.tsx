@@ -104,7 +104,6 @@ const RatingSection = ({ propertyId, adminRating }: { propertyId: string; adminR
     else {
       toast.success("Feedback submitted!");
       setComment("");
-      // Refresh avg
       const { data } = await supabase.from("property_ratings").select("rating").eq("property_id", propertyId);
       if (data && data.length > 0) {
         setAvgTenantRating(data.reduce((s, r) => s + Number(r.rating), 0) / data.length);
@@ -114,7 +113,6 @@ const RatingSection = ({ propertyId, adminRating }: { propertyId: string; adminR
     setIsSubmitting(false);
   };
 
-  // Weighted: (admin + tenant_avg) / 2
   const displayedRating = adminRating && avgTenantRating
     ? ((adminRating + avgTenantRating) / 2).toFixed(1)
     : avgTenantRating ? avgTenantRating.toFixed(1)
@@ -123,7 +121,6 @@ const RatingSection = ({ propertyId, adminRating }: { propertyId: string; adminR
 
   return (
     <div className="mt-10 space-y-4">
-      {/* Aggregated Rating Display */}
       <div className="p-4 bg-secondary/50 rounded-2xl flex items-center justify-between">
         <div>
           <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Community Rating</p>
@@ -141,7 +138,6 @@ const RatingSection = ({ propertyId, adminRating }: { propertyId: string; adminR
         )}
       </div>
 
-      {/* Submit Rating */}
       <div className="p-6 bg-card border border-border rounded-[2rem] shadow-sm">
         <h3 className="text-sm font-black uppercase tracking-widest mb-4 flex items-center gap-2">
           <Star className="w-4 h-4 text-primary" /> Rate this Property
@@ -336,6 +332,37 @@ const PropertyDetail = () => {
                   <p className="text-[9px] text-muted-foreground uppercase font-bold">{s.l}</p>
                 </div>
               ))}
+            </div>
+
+            {/* --- AMENITIES & TAGS SECTION --- */}
+            <div className="space-y-4 pt-4 border-t border-border/50">
+              <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground flex items-center gap-2">
+                <Sparkles className="w-3 h-3 text-primary" /> Features & Amenities
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                {(() => {
+                  const allAmenities = Array.from(new Set([
+                    ...(p.tags || []),
+                    ...(p.features || [])
+                  ])).filter(t => t && String(t).trim() !== "");
+
+                  if (allAmenities.length === 0) {
+                    return <p className="text-[10px] font-bold text-muted-foreground italic uppercase tracking-widest">Basic Utilities Included</p>;
+                  }
+
+                  return allAmenities.map((amenity) => (
+                    <div 
+                      key={amenity}
+                      className="bg-secondary/40 border border-border/40 px-4 py-2 rounded-xl flex items-center gap-2 group hover:border-primary/30 transition-colors"
+                    >
+                      <div className="w-1 h-1 rounded-full bg-primary" />
+                      <span className="text-[10px] font-black uppercase tracking-tight text-foreground">
+                        {amenity}
+                      </span>
+                    </div>
+                  ));
+                })()}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
