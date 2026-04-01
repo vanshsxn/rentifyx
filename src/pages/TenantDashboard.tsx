@@ -24,6 +24,16 @@ const TenantDashboard = () => {
   const [editName, setEditName] = useState("");
   const [editAvatar, setEditAvatar] = useState("");
 
+  const isOptimized = searchParams.get("optimize") === "true";
+  const hasMaxRent = searchParams.get("maxRent");
+
+  // Dynamic Header Title Logic
+  const getPageTitle = () => {
+    if (isOptimized || hasMaxRent) return "Smart Budget Analyzer";
+    if (userProfile?.role === 'landlord') return "Landlord Hub";
+    return "Properties";
+  };
+
   const filterTags = [
     { id: "WiFi", icon: Wifi },
     { id: "Parking", icon: Car },
@@ -70,14 +80,12 @@ const TenantDashboard = () => {
 
     let result = [...properties];
 
-    // 1. TAG FILTER (Global)
     if (selectedTags.length > 0) {
       result = result.filter(p => 
         selectedTags.every(tag => p.features?.includes(tag))
       );
     }
 
-    // 2. BUDGET LOGIC (The "AI Optimizer" Logic)
     const maxRentParam = searchParams.get("maxRent");
     const isOptimized = searchParams.get("optimize") === "true";
     const numericQuery = !isNaN(Number(searchQuery)) && searchQuery !== "" ? Number(searchQuery) : null;
@@ -85,29 +93,21 @@ const TenantDashboard = () => {
 
     if (isOptimized || budgetLimit) {
       const limit = budgetLimit || Infinity;
-      
-      // Filter list to only those within budget
       const withinBudget = result.filter(p => Number(p.rent) <= limit);
-
-      // A. Check for EXACT match first
       const exactMatches = withinBudget.filter(p => Number(p.rent) === limit);
 
       if (exactMatches.length > 0) {
-        // If exact price exists, pick the one with most amenities
         const bestExact = exactMatches.sort((a, b) => 
           (b.features?.length || 0) - (a.features?.length || 0)
         )[0];
         result = [bestExact];
       } else {
-        // B. Fallback: Find the "Highest Value" property under the budget
         const bestValueUnder = withinBudget.sort((a, b) => 
           (b.features?.length || 0) - (a.features?.length || 0)
         )[0];
-        
         result = bestValueUnder ? [bestValueUnder] : [];
       }
     } 
-    // 3. SEARCH LOGIC (Only if not doing the numeric budget optimization)
     else if (searchQuery && isNaN(Number(searchQuery))) {
       const query = searchQuery.toLowerCase();
       result = result.filter(p => 
@@ -141,8 +141,9 @@ const TenantDashboard = () => {
       <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/50 px-4 py-4 md:py-6">
         <div className="max-w-6xl mx-auto flex flex-col gap-4">
           <div className="flex items-center justify-between">
+            {/* UPDATED DYNAMIC HEADER TITLE */}
             <h1 className="text-xl font-black italic tracking-tighter uppercase text-primary">
-              {userProfile?.role === 'landlord' ? "Landlord Hub" : "Tenant Dashboard"}
+              {getPageTitle()}
             </h1>
 
             <div className="relative">
@@ -179,9 +180,9 @@ const TenantDashboard = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredProps.length > 0 ? (
             filteredProps.map((p) => (
-              <motion.div key={p.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-[2rem] overflow-hidden border border-border/50 group" onClick={() => navigate(`/property/${p.id}`)}>
+              <motion.div key={p.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-[2rem] overflow-hidden border border-border/50 group cursor-pointer" onClick={() => navigate(`/property/${p.id}`)}>
                 <div className="relative aspect-video overflow-hidden">
-                  <img src={p.image_url || "/placeholder.jpg"} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                  <img src={p.image_url || "/placeholder.jpg"} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-lg text-[8px] font-black uppercase italic">
                     {p.features?.length || 0} Amenities
                   </div>
@@ -205,7 +206,7 @@ const TenantDashboard = () => {
               <div className="w-16 h-16 bg-secondary rounded-full flex items-center justify-center mx-auto">
                 <Search className="w-8 h-8 text-muted-foreground" />
               </div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">No units found within this budget.</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">No units found matching your criteria.</p>
             </div>
           )}
         </div>
