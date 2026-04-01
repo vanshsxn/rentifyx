@@ -40,8 +40,6 @@ const TenantDashboard = () => {
 
   const fetchInitialData = async () => {
     setLoading(true);
-    
-    // Using 'as any' to bypass strict TS errors on the Auth client
     const { data: { user } } = await (supabase.auth as any).getUser();
     
     if (user) {
@@ -72,58 +70,49 @@ const TenantDashboard = () => {
 
     let result = [...properties];
 
-    // 1. SEARCH LOGIC (Text + Price)
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      const isNumeric = !isNaN(Number(query));
-
-      result = result.filter(p => {
-        const matchesText = p.title?.toLowerCase().includes(query) || p.area?.toLowerCase().includes(query);
-        const matchesPrice = isNumeric ? Number(p.rent) <= Number(query) : false;
-        return matchesText || matchesPrice;
-      });
-    }
-
-    // 2. TAG FILTER
+    // 1. TAG FILTER (Global)
     if (selectedTags.length > 0) {
       result = result.filter(p => 
         selectedTags.every(tag => p.features?.includes(tag))
       );
     }
 
-    // 3. KNAPSACK TIE-BREAKER (Max Amenities for Price)
+    // 2. BUDGET LOGIC (The "AI Optimizer" Logic)
     const maxRentParam = searchParams.get("maxRent");
     const isOptimized = searchParams.get("optimize") === "true";
+    const numericQuery = !isNaN(Number(searchQuery)) && searchQuery !== "" ? Number(searchQuery) : null;
+    const budgetLimit = numericQuery || (maxRentParam ? Number(maxRentParam) : null);
 
-    if (isOptimized || maxRentParam || (searchQuery && !isNaN(Number(searchQuery)))) {
-      const budgetLimit = searchQuery && !isNaN(Number(searchQuery)) 
-        ? Number(searchQuery) 
-        : (maxRentParam ? Number(maxRentParam) : Infinity);
+    if (isOptimized || budgetLimit) {
+      const limit = budgetLimit || Infinity;
       
-      const bestValueMap = new Map();
+      // Filter list to only those within budget
+      const withinBudget = result.filter(p => Number(p.rent) <= limit);
 
-      result.forEach(item => {
-        const price = Number(item.rent);
-        if (price > budgetLimit) return;
+      // A. Check for EXACT match first
+      const exactMatches = withinBudget.filter(p => Number(p.rent) === limit);
 
-        const amenityCount = (item.features?.length || 0);
-
-        if (!bestValueMap.has(price)) {
-          bestValueMap.set(price, item);
-        } else {
-          // If prices are the same, keep only the one with MORE tags
-          const existing = bestValueMap.get(price);
-          if (amenityCount > (existing.features?.length || 0)) {
-            bestValueMap.set(price, item);
-          }
-        }
-      });
-
-      result = Array.from(bestValueMap.values()).sort((a, b) => {
-        const countA = (a.features?.length || 0);
-        const countB = (b.features?.length || 0);
-        return countB - countA;
-      });
+      if (exactMatches.length > 0) {
+        // If exact price exists, pick the one with most amenities
+        const bestExact = exactMatches.sort((a, b) => 
+          (b.features?.length || 0) - (a.features?.length || 0)
+        )[0];
+        result = [bestExact];
+      } else {
+        // B. Fallback: Find the "Highest Value" property under the budget
+        const bestValueUnder = withinBudget.sort((a, b) => 
+          (b.features?.length || 0) - (a.features?.length || 0)
+        )[0];
+        
+        result = bestValueUnder ? [bestValueUnder] : [];
+      }
+    } 
+    // 3. SEARCH LOGIC (Only if not doing the numeric budget optimization)
+    else if (searchQuery && isNaN(Number(searchQuery))) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(p => 
+        p.title?.toLowerCase().includes(query) || p.area?.toLowerCase().includes(query)
+      );
     }
 
     setFilteredProps(result);
@@ -188,28 +177,37 @@ const TenantDashboard = () => {
 
       <main className="max-w-6xl mx-auto px-4 mt-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProps.map((p) => (
-            <motion.div key={p.id} className="bg-card rounded-[2rem] overflow-hidden border border-border/50 group">
-              <div className="relative aspect-video overflow-hidden">
-                <img src={p.image_url || "/placeholder.jpg"} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-lg text-[8px] font-black uppercase italic">
-                  {p.features?.length || 0} Amenities
-                </div>
-              </div>
-              <div className="p-6 space-y-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-black uppercase tracking-tight text-lg leading-none">{p.title}</h3>
-                    <p className="text-[10px] text-muted-foreground font-bold mt-2 uppercase flex items-center gap-1"><MapPin className="w-3 h-3 text-primary"/> {p.area}</p>
+          {filteredProps.length > 0 ? (
+            filteredProps.map((p) => (
+              <motion.div key={p.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-[2rem] overflow-hidden border border-border/50 group" onClick={() => navigate(`/property/${p.id}`)}>
+                <div className="relative aspect-video overflow-hidden">
+                  <img src={p.image_url || "/placeholder.jpg"} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                  <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-lg text-[8px] font-black uppercase italic">
+                    {p.features?.length || 0} Amenities
                   </div>
-                  <p className="text-xl font-black italic">₹{p.rent.toLocaleString()}</p>
                 </div>
-                <div className="flex items-center gap-1 text-orange-500 text-xs font-black">
-                   <Star className="w-3 h-3 fill-current" /> {p.rating || "0.0"}
+                <div className="p-6 space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-black uppercase tracking-tight text-lg leading-none">{p.title}</h3>
+                      <p className="text-[10px] text-muted-foreground font-bold mt-2 uppercase flex items-center gap-1"><MapPin className="w-3 h-3 text-primary"/> {p.area}</p>
+                    </div>
+                    <p className="text-xl font-black italic">₹{p.rent.toLocaleString()}</p>
+                  </div>
+                  <div className="flex items-center gap-1 text-orange-500 text-xs font-black">
+                     <Star className="w-3 h-3 fill-current" /> {p.rating || "0.0"}
+                  </div>
                 </div>
+              </motion.div>
+            ))
+          ) : (
+            <div className="col-span-full py-20 text-center space-y-4">
+              <div className="w-16 h-16 bg-secondary rounded-full flex items-center justify-center mx-auto">
+                <Search className="w-8 h-8 text-muted-foreground" />
               </div>
-            </motion.div>
-          ))}
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">No units found within this budget.</p>
+            </div>
+          )}
         </div>
       </main>
 
