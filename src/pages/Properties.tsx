@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Search, ArrowLeft, Zap, Sparkles, Star, X, IndianRupee } from "lucide-react";
+import { Search, ArrowLeft, Zap, Sparkles, Star, X, IndianRupee, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -24,9 +24,13 @@ const knapsackOptimize = (items: DBProperty[], budget: number): DBProperty[] => 
   for (const item of items) {
     const rent = Math.round(item.rent);
     const existing = priceMap.get(rent);
-    const itemTags = (item.tags?.length || 0) + (item.features?.length || 0);
-    const existingTags = existing ? (existing.tags?.length || 0) + (existing.features?.length || 0) : 0;
-    if (!existing || itemTags > existingTags) {
+    // Use a Set to get true unique count of amenities for the value calculation
+    const uniqueTagsCount = new Set([...(item.tags || []), ...(item.features || [])]).size;
+    const existingTagsCount = existing 
+      ? new Set([...(existing.tags || []), ...(existing.features || [])]).size 
+      : 0;
+
+    if (!existing || uniqueTagsCount > existingTagsCount) {
       priceMap.set(rent, item);
     }
   }
@@ -36,7 +40,7 @@ const knapsackOptimize = (items: DBProperty[], budget: number): DBProperty[] => 
   const W = Math.floor(budget / scaleFactor);
   const n = dedupedItems.length;
   const weights = dedupedItems.map(i => Math.floor(Math.round(i.rent) / scaleFactor));
-  const values = dedupedItems.map(i => (i.tags?.length || 0) + (i.features?.length || 0));
+  const values = dedupedItems.map(i => new Set([...(i.tags || []), ...(i.features || [])]).size);
 
   const dp: number[][] = Array.from({ length: n + 1 }, () => new Array(W + 1).fill(0));
 
@@ -65,7 +69,7 @@ const knapsackOptimize = (items: DBProperty[], budget: number): DBProperty[] => 
     return dedupedItems
       .map(item => ({
         ...item,
-        ratio: ((item.tags?.length || 0) + (item.features?.length || 0)) / (item.rent || 1),
+        ratio: new Set([...(item.tags || []), ...(item.features || [])]).size / (item.rent || 1),
       }))
       .sort((a, b) => b.ratio - a.ratio)
       .slice(0, 6);
@@ -112,14 +116,12 @@ const Properties = () => {
     fetchProperties();
   }, [maxRentParam, tagFilter]);
 
-  // Logic: Optimized Results only show when the "Zap" button is triggered
   const optimizedResults = useMemo(() => {
     if (!activeBudget) return null;
     const withinBudget = properties.filter(p => p.rent <= activeBudget);
     return knapsackOptimize(withinBudget, activeBudget);
   }, [activeBudget, properties]);
 
-  // Logic: Search bar filters by text AND price
   const filtered = useMemo(() => {
     if (optimizedResults) return []; 
     if (!searchQuery) return properties;
@@ -133,7 +135,6 @@ const Properties = () => {
         p.area.toLowerCase().includes(query) ||
         p.address.toLowerCase().includes(query);
       
-      // If user types a number, show anything less than or equal to that rent
       const priceMatch = !isNaN(numQuery) && p.rent <= numQuery;
       
       return textMatch || priceMatch;
@@ -154,14 +155,14 @@ const Properties = () => {
               <button onClick={() => navigate("/")} className="p-3 rounded-2xl bg-secondary hover:bg-border transition-all">
                 <ArrowLeft className="w-5 h-5" />
               </button>
-              <h1 className="text-2xl font-black uppercase tracking-tighter italic">Marketplace</h1>
+              <h1 className="text-2xl font-black uppercase tracking-tighter italic text-foreground">Marketplace</h1>
             </div>
 
             <div className="flex items-center gap-2 bg-primary/10 p-1.5 rounded-2xl border border-primary/20">
               <input
                 type="number"
                 placeholder="Budget ₹"
-                className="bg-transparent border-none text-[10px] font-black uppercase px-3 focus:outline-none w-24 md:w-32"
+                className="bg-transparent border-none text-[10px] font-black uppercase px-3 focus:outline-none w-24 md:w-32 text-foreground"
                 value={budgetInput}
                 onChange={(e) => setBudgetInput(e.target.value)}
               />
@@ -181,10 +182,10 @@ const Properties = () => {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search by area, property name, or price..."
+              placeholder="Search area, property, or price..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 rounded-[1.5rem] border border-border bg-card text-[11px] font-bold uppercase tracking-widest focus:ring-2 focus:ring-primary/20 transition-all"
+              className="w-full pl-12 pr-4 py-4 rounded-[1.5rem] border border-border bg-card text-[11px] font-bold uppercase tracking-widest focus:ring-2 focus:ring-primary/20 transition-all text-foreground"
             />
           </div>
         </div>
@@ -200,11 +201,11 @@ const Properties = () => {
               className="mb-12 p-8 bg-foreground text-background rounded-[3rem] shadow-2xl overflow-hidden border border-white/10"
             >
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-primary" /> AI Optimized Package for ₹{activeBudget}
+                <h2 className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-background">
+                  <Sparkles className="w-4 h-4 text-primary" /> AI Optimized Package (₹{activeBudget})
                 </h2>
                 <button onClick={clearOptimizer} className="p-2 hover:bg-background/20 rounded-xl transition-colors">
-                  <X className="w-4 h-4" />
+                  <X className="w-4 h-4 text-background" />
                 </button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -216,7 +217,7 @@ const Properties = () => {
                   >
                     <img src={p.image_url || "/placeholder.svg"} className="w-16 h-16 rounded-xl object-cover" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-black uppercase truncate">{p.title}</p>
+                      <p className="text-[11px] font-black uppercase truncate text-background">{p.title}</p>
                       <p className="text-[10px] font-bold text-primary">₹{p.rent.toLocaleString()}</p>
                     </div>
                     <Star className="w-3 h-3 fill-orange-500 text-orange-500" />
@@ -251,17 +252,23 @@ const Properties = () => {
                 </div>
                 <div className="p-6 space-y-3">
                   <div className="flex justify-between items-start">
-                    <h3 className="font-black uppercase text-sm tracking-tighter">{p.title}</h3>
+                    <h3 className="font-black uppercase text-sm tracking-tighter text-foreground">{p.title}</h3>
                     <div className="flex items-center gap-1 text-orange-500 font-bold text-[10px]">
                       <Star className="w-3 h-3 fill-current" /> {p.rating || 0}
                     </div>
                   </div>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1">
-                    <IndianRupee className="w-3 h-3" /> {p.area}
+                    <MapPin className="w-3 h-3" /> {p.area}
                   </p>
                   <div className="flex flex-wrap gap-2 pt-2">
-                    {[...(p.tags || []), ...(p.features || [])].slice(0, 3).map((tag) => (
-                      <span key={tag} className="text-[8px] px-3 py-1 rounded-full bg-secondary text-foreground font-black uppercase tracking-tighter">{tag}</span>
+                    {/* UNIQUE AMENITY LOGIC HERE */}
+                    {Array.from(new Set([...(p.tags || []), ...(p.features || [])]))
+                      .filter(tag => tag && tag.trim() !== "")
+                      .slice(0, 7)
+                      .map((tag) => (
+                        <span key={tag} className="text-[8px] px-3 py-1 rounded-full bg-secondary text-foreground font-black uppercase tracking-tighter border border-border/50">
+                          {tag}
+                        </span>
                     ))}
                   </div>
                 </div>
