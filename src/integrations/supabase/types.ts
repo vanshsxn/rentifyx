@@ -76,6 +76,7 @@ export type Database = {
       properties: {
         Row: {
           address: string
+          admin_rating: number | null
           area: string
           bathrooms: number | null
           bedrooms: number | null
@@ -92,6 +93,7 @@ export type Database = {
           rating: number | null
           rent: number
           sqft: number | null
+          tags: string[] | null
           title: string
           updated_at: string
           video_url: string | null
@@ -99,6 +101,7 @@ export type Database = {
         }
         Insert: {
           address: string
+          admin_rating?: number | null
           area: string
           bathrooms?: number | null
           bedrooms?: number | null
@@ -115,6 +118,7 @@ export type Database = {
           rating?: number | null
           rent: number
           sqft?: number | null
+          tags?: string[] | null
           title: string
           updated_at?: string
           video_url?: string | null
@@ -122,6 +126,7 @@ export type Database = {
         }
         Update: {
           address?: string
+          admin_rating?: number | null
           area?: string
           bathrooms?: number | null
           bedrooms?: number | null
@@ -138,12 +143,48 @@ export type Database = {
           rating?: number | null
           rent?: number
           sqft?: number | null
+          tags?: string[] | null
           title?: string
           updated_at?: string
           video_url?: string | null
           vr_url?: string | null
         }
         Relationships: []
+      }
+      property_ratings: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          property_id: string
+          rating: number
+          user_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          property_id: string
+          rating: number
+          user_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          property_id?: string
+          rating?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_ratings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tenant_requests: {
         Row: {
