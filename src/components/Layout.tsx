@@ -28,9 +28,10 @@ const Layout = ({ children, role, onRoleChange }: LayoutProps) => {
   const MASTER_ADMIN_EMAIL = "vanshsxn2006@gmail.com";
   const isAdmin = user?.email === MASTER_ADMIN_EMAIL;
 
-  // Role-aware header text
-  const headerTitle = userRole === "landlord" ? "Landlord Hub" : userRole === "admin" ? "Admin Panel" : "Tenant Profile";
-  const headerSub = userRole === "landlord" ? "Portfolio Manager" : userRole === "admin" ? "Control Center" : "Your Rentals";
+  // --- CHANGED THIS SECTION ---
+  // Always show "Properties" instead of role-specific hubs
+  const headerTitle = "Properties";
+  // ----------------------------
 
   const handleSignOut = async () => {
     await signOut();

@@ -34,13 +34,15 @@ const Landing = () => {
   }, []);
 
   const checkUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
+    // Using getUser() with type assertion to bypass strict TS issues
+    const { data: { user } } = await (supabase.auth as any).getUser();
+    
+    if (user) {
       setIsLoggedIn(true);
       const { data: profile } = await supabase
         .from("profiles")
         .select("role")
-        .eq("id", session.user.id)
+        .eq("id", user.id)
         .single();
       setUserRole(profile?.role || "tenant");
     }
@@ -72,12 +74,11 @@ const Landing = () => {
     navigate(`/tenant?maxRent=${tempBudget}&optimize=true`);
   };
 
-  // Helper to handle the "Landlord Hub" button click
   const handleDashboardRedirect = () => {
     if (!isLoggedIn) {
       navigate("/auth");
     } else {
-      // Redirect based on role
+      // Direct to specific dashboards based on role
       if (userRole === "landlord") navigate("/landlord");
       else navigate("/tenant");
     }
@@ -151,7 +152,6 @@ const Landing = () => {
 
       {/* Cinematic Hero Section */}
       <section className="relative min-h-[75vh] flex items-center justify-center px-4 pt-16 pb-24 overflow-hidden bg-slate-950">
-        <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover z-0 opacity-40 pointer-events-none" src="/hero-video.mp4" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-background z-[1]" />
         
         <div className="text-center max-w-3xl mx-auto space-y-8 relative z-10">
@@ -173,12 +173,12 @@ const Landing = () => {
               Browse Listings <ArrowRight className="w-4 h-4" />
             </button>
             
-            {/* Dynamic Button based on Login Status and Role */}
+            {/* Dynamic Dashboard Button */}
             <button onClick={handleDashboardRedirect} className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 text-white text-[12px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all">
               {isLoggedIn ? (
                 <>
                   <LayoutDashboard className="w-4 h-4" /> 
-                  {userRole === 'landlord' ? "Landlord Hub" : "My Dashboard"}
+                  {userRole === 'landlord' ? "Landlord Hub" : "Tenant Hub"}
                 </>
               ) : (
                 <>
@@ -252,7 +252,6 @@ const Landing = () => {
         )}
       </main>
 
-      {/* Footer */}
       <footer className="py-12 border-t border-border/50 text-center">
         <p className="text-[9px] font-bold uppercase tracking-[0.4em] text-muted-foreground/30">© 2026 Made by MV Studios Japan</p>
       </footer>
