@@ -24,10 +24,14 @@ const knapsackOptimize = (items: DBProperty[], budget: number): DBProperty[] => 
   for (const item of items) {
     const rent = Math.round(item.rent);
     const existing = priceMap.get(rent);
-    // Use a Set to get true unique count of amenities for the value calculation
-    const uniqueTagsCount = new Set([...(item.tags || []), ...(item.features || [])]).size;
-    const existingTagsCount = existing 
-      ? new Set([...(existing.tags || []), ...(existing.features || [])]).size 
+    
+    // Calculate true unique amenity count for value assessment
+    const uniqueAmenities = new Set([...(item.tags || []), ...(item.features || [])]);
+    const uniqueTagsCount = Array.from(uniqueAmenities).filter(t => t && t.trim() !== "").length;
+
+    const existingUnique = existing ? new Set([...(existing.tags || []), ...(existing.features || [])]) : null;
+    const existingTagsCount = existingUnique 
+      ? Array.from(existingUnique).filter(t => t && t.trim() !== "").length 
       : 0;
 
     if (!existing || uniqueTagsCount > existingTagsCount) {
@@ -40,7 +44,10 @@ const knapsackOptimize = (items: DBProperty[], budget: number): DBProperty[] => 
   const W = Math.floor(budget / scaleFactor);
   const n = dedupedItems.length;
   const weights = dedupedItems.map(i => Math.floor(Math.round(i.rent) / scaleFactor));
-  const values = dedupedItems.map(i => new Set([...(i.tags || []), ...(i.features || [])]).size);
+  const values = dedupedItems.map(i => {
+    const combined = new Set([...(i.tags || []), ...(i.features || [])]);
+    return Array.from(combined).filter(t => t && t.trim() !== "").length;
+  });
 
   const dp: number[][] = Array.from({ length: n + 1 }, () => new Array(W + 1).fill(0));
 
@@ -67,11 +74,12 @@ const knapsackOptimize = (items: DBProperty[], budget: number): DBProperty[] => 
 
   if (result.length === 0) {
     return dedupedItems
-      .map(item => ({
-        ...item,
-        ratio: new Set([...(item.tags || []), ...(item.features || [])]).size / (item.rent || 1),
-      }))
-      .sort((a, b) => b.ratio - a.ratio)
+      .map(item => {
+        const combined = new Set([...(item.tags || []), ...(item.features || [])]);
+        const count = Array.from(combined).filter(t => t && t.trim() !== "").length;
+        return { ...item, ratio: count / (item.rent || 1) };
+      })
+      .sort((a, b) => (b as any).ratio - (a as any).ratio)
       .slice(0, 6);
   }
 
@@ -105,7 +113,7 @@ const Properties = () => {
       if (tagFilter) {
         results = results.filter(p =>
           [...(p.tags || []), ...(p.features || [])].some(
-            t => t.toLowerCase() === tagFilter.toLowerCase()
+            t => t?.toLowerCase() === tagFilter.toLowerCase()
           )
         );
       }
@@ -260,13 +268,17 @@ const Properties = () => {
                   <p className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1">
                     <MapPin className="w-3 h-3" /> {p.area}
                   </p>
+                  
+                  {/* Tenant Amenities Display */}
                   <div className="flex flex-wrap gap-2 pt-2">
-                    {/* UNIQUE AMENITY LOGIC HERE */}
                     {Array.from(new Set([...(p.tags || []), ...(p.features || [])]))
                       .filter(tag => tag && tag.trim() !== "")
                       .slice(0, 7)
                       .map((tag) => (
-                        <span key={tag} className="text-[8px] px-3 py-1 rounded-full bg-secondary text-foreground font-black uppercase tracking-tighter border border-border/50">
+                        <span 
+                          key={tag} 
+                          className="text-[8px] px-3 py-1 rounded-full bg-secondary text-foreground font-black uppercase tracking-tighter border border-border/50"
+                        >
                           {tag}
                         </span>
                     ))}
