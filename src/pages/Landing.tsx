@@ -24,7 +24,6 @@ const Landing = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   
-  // --- Budget Modal State ---
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [tempBudget, setTempBudget] = useState("");
 
@@ -34,7 +33,6 @@ const Landing = () => {
   }, []);
 
   const checkUser = async () => {
-    // Using getUser() with type assertion to bypass strict TS issues
     const { data: { user } } = await (supabase.auth as any).getUser();
     
     if (user) {
@@ -78,7 +76,6 @@ const Landing = () => {
     if (!isLoggedIn) {
       navigate("/auth");
     } else {
-      // Direct to specific dashboards based on role
       if (userRole === "landlord") navigate("/landlord");
       else navigate("/tenant");
     }
@@ -94,7 +91,6 @@ const Landing = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col font-sans selection:bg-primary selection:text-white">
       
-      {/* Budget Modal Overlay */}
       <AnimatePresence>
         {showBudgetModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center px-6">
@@ -150,9 +146,19 @@ const Landing = () => {
         )}
       </AnimatePresence>
 
-      {/* Cinematic Hero Section */}
+      {/* Cinematic Hero Section with local video */}
       <section className="relative min-h-[75vh] flex items-center justify-center px-4 pt-16 pb-24 overflow-hidden bg-slate-950">
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-background z-[1]" />
+        <video 
+          autoPlay 
+          loop 
+          muted 
+          playsInline 
+          className="absolute inset-0 w-full h-full object-cover z-0 opacity-60"
+        >
+          <source src="/hero-video.mp4" type="video/mp4" />
+        </video>
+
+        <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/40 to-background z-[1]" />
         
         <div className="text-center max-w-3xl mx-auto space-y-8 relative z-10">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="space-y-4">
@@ -173,7 +179,6 @@ const Landing = () => {
               Browse Listings <ArrowRight className="w-4 h-4" />
             </button>
             
-            {/* Dynamic Dashboard Button */}
             <button onClick={handleDashboardRedirect} className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 text-white text-[12px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all">
               {isLoggedIn ? (
                 <>
@@ -190,7 +195,6 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Floating Filter Grid */}
       <div className="container max-w-5xl mx-auto px-4 -mt-16 relative z-30">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {filters.map((f) => (
@@ -211,7 +215,6 @@ const Landing = () => {
         </div>
       </div>
 
-      {/* Featured Grid */}
       <main className="container max-w-6xl mx-auto px-4 py-20 space-y-10">
         <div className="flex flex-col md:flex-row justify-between items-end gap-4 border-b border-border/50 pb-8">
           <div className="space-y-1">
