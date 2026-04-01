@@ -16,10 +16,8 @@ const Auth = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Master Admin Email
   const MASTER_ADMIN_EMAIL = "vanshsxn2006@gmail.com";
 
-  // Redirect logic based on database role
   useEffect(() => {
     if (user) {
       checkRoleAndRedirect(user.id, user.email);
@@ -27,28 +25,24 @@ const Auth = () => {
   }, [user]);
 
   const checkRoleAndRedirect = async (userId: string, userEmail?: string) => {
-    // 1. Instant Master Admin Check
     if (userEmail === MASTER_ADMIN_EMAIL) {
       navigate("/admin", { replace: true });
       return;
     }
 
-    // 2. Fetch role from the 'profiles' table we created in Supabase
-    const { data: profile, error } = await supabase
-      .from("profiles")
+    const { data: roleData } = await supabase
+      .from("user_roles")
       .select("role")
-      .eq("id", userId)
+      .eq("user_id", userId)
       .single();
 
-    if (error || !profile) {
-      // Fallback if profile isn't found yet
+    if (!roleData) {
       navigate(selectedRole === "landlord" ? "/landlord" : "/tenant", { replace: true });
       return;
     }
 
-    // 3. Route based on database role
-    if (profile.role === "admin") navigate("/admin", { replace: true });
-    else if (profile.role === "landlord") navigate("/landlord", { replace: true });
+    if (roleData.role === "admin") navigate("/admin", { replace: true });
+    else if (roleData.role === "landlord") navigate("/landlord", { replace: true });
     else navigate("/tenant", { replace: true });
   };
 
@@ -57,7 +51,6 @@ const Auth = () => {
     setLoading(true);
 
     if (isLogin) {
-      // LOGIN LOGIC
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         toast.error("Login failed", { description: error.message });
@@ -66,24 +59,29 @@ const Auth = () => {
         await checkRoleAndRedirect(data.user.id, data.user.email);
       }
     } else {
-      // SIGN UP LOGIC
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { 
+        options: {
           emailRedirectTo: window.location.origin,
-          // We pass the role in metadata so the SQL Trigger can pick it up
           data: {
-            role: email === MASTER_ADMIN_EMAIL ? "admin" : selectedRole 
-          }
+            role: email === MASTER_ADMIN_EMAIL ? "admin" : selectedRole,
+            full_name: email.split("@")[0],
+          },
         },
       });
 
       if (error) {
         toast.error("Signup failed", { description: error.message });
       } else if (data.user) {
+        // Insert role into user_roles table
+        const role = email === MASTER_ADMIN_EMAIL ? "admin" : selectedRole;
+        await supabase.from("user_roles").upsert({
+          user_id: data.user.id,
+          role: role,
+        });
+
         toast.success("Account created! Redirecting...");
-        // The SQL trigger handles the database insertion automatically
         setTimeout(() => {
           navigate(selectedRole === "landlord" ? "/landlord" : "/tenant", { replace: true });
         }, 1500);
@@ -117,7 +115,6 @@ const Auth = () => {
             </p>
           </div>
 
-          {/* Role Selector (Only show during Signup) */}
           {!isLogin && (
             <div className="flex gap-2 p-1 bg-secondary/50 rounded-xl">
               {(["tenant", "landlord"] as const).map((r) => (
@@ -185,8 +182,8 @@ const Auth = () => {
           </form>
 
           <div className="text-center">
-            <button 
-              onClick={() => setIsLogin(!isLogin)} 
+            <button
+              onClick={() => setIsLogin(!isLogin)}
               className="text-xs text-muted-foreground hover:text-primary transition-colors"
             >
               {isLogin ? "Need an account? Sign Up" : "Already have an account? Sign In"}

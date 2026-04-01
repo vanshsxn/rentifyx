@@ -22,15 +22,15 @@ const roles = [
 const Layout = ({ children, role, onRoleChange }: LayoutProps) => {
   const location = useLocation();
   const { theme, setTheme } = useTheme();
-  const { user, signOut } = useAuth();
+  const { user, userRole, signOut } = useAuth();
   const navigate = useNavigate();
 
-  /**
-   * MASTER ADMIN CHECK
-   * Only I (vanshsxn2006@gmail.com) can see the role switcher.
-   */
-  const MASTER_ADMIN_EMAIL = "vanshsxn2006@gmail.com"; 
+  const MASTER_ADMIN_EMAIL = "vanshsxn2006@gmail.com";
   const isAdmin = user?.email === MASTER_ADMIN_EMAIL;
+
+  // Role-aware header text
+  const headerTitle = userRole === "landlord" ? "Landlord Hub" : userRole === "admin" ? "Admin Panel" : "Tenant Profile";
+  const headerSub = userRole === "landlord" ? "Portfolio Manager" : userRole === "admin" ? "Control Center" : "Your Rentals";
 
   const handleSignOut = async () => {
     await signOut();
@@ -44,11 +44,15 @@ const Layout = ({ children, role, onRoleChange }: LayoutProps) => {
         <div className="container max-w-6xl mx-auto flex items-center justify-between h-16 px-4">
           <Link to="/" className="flex items-center gap-2">
             <Home className="w-5 h-5 text-primary" />
-            <span className="text-lg font-bold tracking-tight text-foreground">RentifyX</span>
+            <div>
+              <span className="text-lg font-bold tracking-tight text-foreground">RentifyX</span>
+              <span className="hidden sm:inline text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-2">
+                {headerTitle}
+              </span>
+            </div>
           </Link>
 
           <div className="flex items-center gap-3">
-            {/* ROLE SWITCHER: Hidden for everyone except vanshsxn2006@gmail.com */}
             {isAdmin && (
               <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
                 {roles.map((r) => {
@@ -73,7 +77,6 @@ const Layout = ({ children, role, onRoleChange }: LayoutProps) => {
               </div>
             )}
 
-            {/* Dark mode toggle */}
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               className="p-2 rounded-lg bg-secondary text-muted-foreground hover:text-foreground transition-colors"
@@ -82,7 +85,6 @@ const Layout = ({ children, role, onRoleChange }: LayoutProps) => {
               {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
 
-            {/* Sign out button */}
             {user && (
               <button
                 onClick={handleSignOut}
