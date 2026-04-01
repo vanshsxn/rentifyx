@@ -6,13 +6,13 @@ import {
   ShieldCheck, CreditCard, Building, History,
   Save, Loader2, ArrowLeft, LogOut, MapPin
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 const ProfileDashboard = () => {
   const navigate = useNavigate();
-  const { user, userRole, signOut } = useAuth();
+  const { user, userRole, signOut } = useAuth(); // Accessing global user state
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -25,32 +25,33 @@ const ProfileDashboard = () => {
     avatar_url: "",
   });
 
+  // 1. Fetch profile only when the 'user' from context is available
   useEffect(() => {
-    getProfile();
-  }, []);
+    if (user) {
+      getProfile();
+    }
+  }, [user]);
 
   const getProfile = async () => {
     try {
       setLoading(true);
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (authUser) {
-        const { data } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", authUser.id)
-          .single();
+      // No need to fetch authUser again, use 'user.id' from useAuth()
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user?.id)
+        .single();
 
-        if (data) {
-          setProfile({
-            full_name: data.full_name || "",
-            phone: data.phone || "",
-            email: authUser.email || "",
-            avatar_url: data.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${authUser.id}`,
-          });
-        }
+      if (data) {
+        setProfile({
+          full_name: data.full_name || "",
+          phone: data.phone || "",
+          email: user?.email || "",
+          avatar_url: data.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}`,
+        });
       }
-    } catch {
-      toast.error("Error loading profile");
+    } catch (err) {
+      console.error("Error loading profile:", err);
     } finally {
       setLoading(false);
     }
@@ -58,7 +59,7 @@ const ProfileDashboard = () => {
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user) return;
+    if (!file || !user?.id) return;
 
     if (file.size > 2 * 1024 * 1024) {
       toast.error("File too large (max 2MB)");
@@ -66,57 +67,67 @@ const ProfileDashboard = () => {
     }
 
     setUploading(true);
-    const ext = file.name.split(".").pop();
-    const filePath = `${user.id}/avatar.${ext}`;
+    try {
+      const ext = file.name.split(".").pop();
+      const filePath = `${user.id}/avatar-${Date.now()}.${ext}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from("avatars")
-      .upload(filePath, file, { upsert: true });
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file, { upsert: true });
 
-    if (uploadError) {
-      toast.error("Upload failed: " + uploadError.message);
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(filePath);
+
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrl })
+        .eq("id", user.id);
+
+      if (updateError) throw updateError;
+
+      setProfile(prev => ({ ...prev, avatar_url: publicUrl }));
+      toast.success("Avatar updated!");
+    } catch (error: any) {
+      toast.error("Upload failed: " + error.message);
+    } finally {
       setUploading(false);
+    }
+  };
+
+  const handleUpdate = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    
+    // Safety check using global context user
+    if (!user?.id) {
+      toast.error("User session not found");
       return;
     }
 
-    const { data: { publicUrl } } = supabase.storage
-      .from("avatars")
-      .getPublicUrl(filePath);
-
-    // Add cache buster
-    const url = `${publicUrl}?t=${Date.now()}`;
-
-    await supabase
-      .from("profiles")
-      .update({ avatar_url: url })
-      .eq("id", user.id);
-
-    setProfile(prev => ({ ...prev, avatar_url: url }));
-    toast.success("Avatar updated!");
-    setUploading(false);
-  };
-
-  const handleUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
     setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          full_name: profile.full_name,
+          phone: profile.phone,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.id);
 
-    const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (error) throw error;
 
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        full_name: profile.full_name,
-        phone: profile.phone,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", authUser?.id);
-
-    if (error) {
-      toast.error("Update failed");
-    } else {
-      toast.success("Profile Updated", { description: "Your changes are now live." });
+      toast.success("Profile Updated", { 
+        description: "Your changes are now live." 
+      });
+      
+    } catch (error: any) {
+      toast.error("Update failed: " + error.message);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   const handleSignOut = async () => {
@@ -125,18 +136,17 @@ const ProfileDashboard = () => {
     navigate("/");
   };
 
-  if (loading) {
+  if (loading && !profile.full_name) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-background">
         <Loader2 className="w-10 h-10 animate-spin text-primary" />
-        <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Initializing Identity...</p>
+        <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Syncing Profile...</p>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-background pb-28 md:pb-20">
-      {/* Hidden file input */}
       <input
         ref={fileInputRef}
         type="file"
@@ -145,7 +155,7 @@ const ProfileDashboard = () => {
         className="hidden"
       />
 
-      {/* HEADER */}
+      {/* HEADER SECTION */}
       <div className="h-48 md:h-64 bg-gradient-to-br from-primary/20 via-background to-background relative overflow-hidden">
         <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]" />
         <div className="max-w-4xl mx-auto px-4 md:px-6 pt-8 md:pt-12 relative z-10">
@@ -161,7 +171,7 @@ const ProfileDashboard = () => {
       <main className="max-w-4xl mx-auto px-4 md:px-6 -mt-24 md:-mt-32 relative z-20">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
 
-          {/* LEFT COLUMN: AVATAR CARD */}
+          {/* LEFT: AVATAR CARD */}
           <div className="lg:col-span-4 space-y-4 md:space-y-6">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -191,9 +201,7 @@ const ProfileDashboard = () => {
 
               <div className="mt-6 md:mt-8 pt-6 md:pt-8 border-t border-border/50 grid grid-cols-2 gap-4">
                 <div className="text-center">
-                  <p className="text-lg font-black italic">
-                    {userRole === "landlord" ? "—" : "—"}
-                  </p>
+                  <p className="text-lg font-black italic">—</p>
                   <p className="text-[8px] font-bold uppercase opacity-50">
                     {userRole === "landlord" ? "Properties" : "Leases"}
                   </p>
@@ -213,7 +221,7 @@ const ProfileDashboard = () => {
             </button>
           </div>
 
-          {/* RIGHT COLUMN: SETTINGS FORM */}
+          {/* RIGHT: INFO FORM */}
           <div className="lg:col-span-8">
             <motion.div
               initial={{ opacity: 0, x: 20 }}
@@ -236,7 +244,7 @@ const ProfileDashboard = () => {
                         className="w-full bg-secondary/30 border-none rounded-2xl py-4 pl-12 pr-6 text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none min-h-[52px]"
                         value={profile.full_name}
                         onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-                        placeholder="John Doe"
+                        placeholder="Your Name"
                       />
                     </div>
                   </div>
@@ -250,7 +258,7 @@ const ProfileDashboard = () => {
                         className="w-full bg-secondary/30 border-none rounded-2xl py-4 pl-12 pr-6 text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none min-h-[52px]"
                         value={profile.phone}
                         onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                        placeholder="+91 00 000 000"
+                        placeholder="+91 00000 00000"
                       />
                     </div>
                   </div>
@@ -269,7 +277,6 @@ const ProfileDashboard = () => {
                   </div>
                 </div>
 
-                {/* Desktop save button */}
                 <div className="hidden md:block pt-4">
                   <button
                     type="submit"
@@ -282,21 +289,14 @@ const ProfileDashboard = () => {
                 </div>
               </form>
             </motion.div>
-
-            {/* Quick Actions */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4 mt-6 md:mt-8">
-              <QuickAction icon={History} label="History" />
-              <QuickAction icon={CreditCard} label="Payments" />
-              <QuickAction icon={userRole === "landlord" ? Building : MapPin} label={userRole === "landlord" ? "Units" : "Area"} />
-            </div>
           </div>
         </div>
       </main>
 
-      {/* FLOATING SAVE BUTTON (Mobile only) */}
+      {/* MOBILE SAVE BUTTON */}
       <div className="fixed bottom-20 left-4 right-4 md:hidden z-50">
         <button
-          onClick={handleUpdate}
+          onClick={() => handleUpdate()}
           disabled={saving}
           className="w-full py-4 bg-foreground text-background rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all"
         >
@@ -307,14 +307,5 @@ const ProfileDashboard = () => {
     </div>
   );
 };
-
-const QuickAction = ({ icon: Icon, label }: { icon: any; label: string }) => (
-  <button className="flex flex-col items-center justify-center p-4 md:p-6 bg-card border border-border/50 rounded-[1.5rem] md:rounded-[2rem] hover:border-primary/50 transition-all group">
-    <div className="p-2.5 md:p-3 bg-secondary/50 rounded-xl group-hover:bg-primary/10 transition-colors">
-      <Icon className="w-5 h-5 group-hover:text-primary transition-colors" />
-    </div>
-    <span className="mt-2 md:mt-3 text-[8px] font-black uppercase tracking-widest">{label}</span>
-  </button>
-);
 
 export default ProfileDashboard;
