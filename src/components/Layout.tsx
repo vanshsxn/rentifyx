@@ -1,225 +1,125 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { 
-  Search, MapPin, Star, Heart, Wifi, Car, Droplets, Shield, Wind, Zap, 
-  Dumbbell, SlidersHorizontal, ArrowLeftRight, X, 
-  Loader2, User, Settings, LogOut, ChevronDown, Camera, Edit3
-} from "lucide-react";
+import { ReactNode } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { Home, Building2, Shield, Search, Moon, Sun, LogOut } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useTheme } from "next-themes";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
-const TenantDashboard = () => {
-  const [searchParams] = useSearchParams();
+interface LayoutProps {
+  children: ReactNode;
+  role: "tenant" | "landlord" | "admin";
+  onRoleChange: (role: "tenant" | "landlord" | "admin") => void;
+}
+
+const roles = [
+  { key: "tenant" as const, label: "Tenant", icon: Search, path: "/tenant" },
+  { key: "landlord" as const, label: "Landlord", icon: Building2, path: "/landlord" },
+  { key: "admin" as const, label: "Admin", icon: Shield, path: "/admin" },
+];
+
+const Layout = ({ children, role, onRoleChange }: LayoutProps) => {
+  const location = useLocation();
+  const { theme, setTheme } = useTheme();
+  const { user, userRole, signOut } = useAuth();
   const navigate = useNavigate();
-  const [properties, setProperties] = useState<any[]>([]);
-  const [filteredProps, setFilteredProps] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  
-  const [userProfile, setUserProfile] = useState<any>(null);
-  const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [editName, setEditName] = useState("");
-  const [editAvatar, setEditAvatar] = useState("");
 
-  const filterTags = [
-    { id: "WiFi", icon: Wifi },
-    { id: "Parking", icon: Car },
-    { id: "Drinking Water", icon: Droplets },
-    { id: "AC", icon: Wind },
-    { id: "CCTV", icon: Shield },
-    { id: "Gym", icon: Dumbbell },
-    { id: "Power Backup", icon: Zap },
-  ];
+  const MASTER_ADMIN_EMAIL = "vanshsxn2006@gmail.com";
+  const isAdmin = user?.email === MASTER_ADMIN_EMAIL;
 
-  useEffect(() => {
-    fetchInitialData();
-  }, []);
+  // --- CHANGED THIS SECTION ---
+  // Always show "Properties" instead of role-specific hubs
+  const headerTitle = " ";
+  // ----------------------------
 
-  const fetchInitialData = async () => {
-    setLoading(true);
-    const { data: { user } } = await (supabase.auth as any).getUser();
-    
-    if (user) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-      
-      if (profile) {
-        setUserProfile(profile);
-        setEditName(profile.full_name || "");
-        setEditAvatar(profile.avatar_url || "");
-      }
-    }
-
-    const { data: props, error } = await supabase
-      .from("properties")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (!error && props) setProperties(props);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    if (!properties.length) return;
-
-    let result = [...properties];
-
-    if (selectedTags.length > 0) {
-      result = result.filter(p => 
-        selectedTags.every(tag => p.features?.includes(tag))
-      );
-    }
-
-    const maxRentParam = searchParams.get("maxRent");
-    const isOptimized = searchParams.get("optimize") === "true";
-    const numericQuery = !isNaN(Number(searchQuery)) && searchQuery !== "" ? Number(searchQuery) : null;
-    const budgetLimit = numericQuery || (maxRentParam ? Number(maxRentParam) : null);
-
-    if (isOptimized || budgetLimit) {
-      const limit = budgetLimit || Infinity;
-      const withinBudget = result.filter(p => Number(p.rent) <= limit);
-      const exactMatches = withinBudget.filter(p => Number(p.rent) === limit);
-
-      if (exactMatches.length > 0) {
-        const bestExact = exactMatches.sort((a, b) => 
-          (b.features?.length || 0) - (a.features?.length || 0)
-        )[0];
-        result = [bestExact];
-      } else {
-        const bestValueUnder = withinBudget.sort((a, b) => 
-          (b.features?.length || 0) - (a.features?.length || 0)
-        )[0];
-        result = bestValueUnder ? [bestValueUnder] : [];
-      }
-    } 
-    else if (searchQuery && isNaN(Number(searchQuery))) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(p => 
-        p.title?.toLowerCase().includes(query) || p.area?.toLowerCase().includes(query)
-      );
-    }
-
-    setFilteredProps(result);
-  }, [searchQuery, selectedTags, properties, searchParams]);
-
-  const handleLogout = async () => {
-    await (supabase.auth as any).signOut();
-    navigate("/auth");
-  };
-
-  const handleSaveProfile = async () => {
-    const { error } = await supabase
-      .from("profiles")
-      .update({ full_name: editName, avatar_url: editAvatar })
-      .eq("id", userProfile.id);
-
-    if (!error) {
-      setUserProfile({ ...userProfile, full_name: editName, avatar_url: editAvatar });
-      setIsEditingProfile(false);
-      toast.success("Profile Updated");
-    }
+  const handleSignOut = async () => {
+    await signOut();
+    toast("Signed out successfully");
+    navigate("/");
   };
 
   return (
-    <div className="min-h-screen bg-background pb-32">
-      <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/50 px-4 py-4 md:py-6">
-        <div className="max-w-6xl mx-auto flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            {/* THE TITLE WAS REMOVED FROM HERE TO CLEAN UP THE UI 
-            */}
-            <div className="flex-1" /> 
-
-            <div className="relative">
-              <button onClick={() => setShowUserMenu(!showUserMenu)} className="flex items-center gap-2 bg-card p-1 pr-3 rounded-full border border-border/50">
-                <img src={userProfile?.avatar_url || "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"} className="w-8 h-8 rounded-full object-cover" />
-                <ChevronDown className={`w-3 h-3 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
-              </button>
-
-              <AnimatePresence>
-                {showUserMenu && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-3 w-56 bg-card border border-border/50 rounded-2xl shadow-2xl p-2 z-50">
-                    <button onClick={() => { setShowUserMenu(false); setIsEditingProfile(true); }} className="w-full flex items-center gap-3 p-3 hover:bg-secondary rounded-xl text-[10px] font-black uppercase tracking-widest"><Settings className="w-4 h-4"/> Edit Profile</button>
-                    <button onClick={handleLogout} className="w-full flex items-center gap-3 p-3 hover:bg-red-500/10 text-red-500 rounded-xl text-[10px] font-black uppercase tracking-widest"><LogOut className="w-4 h-4"/> Sign Out</button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+    <div className="min-h-screen flex flex-col bg-background transition-colors duration-300">
+      <header className="sticky top-0 z-40 bg-card/80 backdrop-blur-lg border-b border-border transition-colors duration-300">
+        <div className="container max-w-6xl mx-auto flex items-center justify-between h-16 px-4">
+          <Link to="/" className="flex items-center gap-2">
+            <Home className="w-5 h-5 text-primary" />
+            <div>
+              <span className="text-lg font-bold tracking-tight text-foreground">RentifyX</span>
+              <span className="hidden sm:inline text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-2">
+                {headerTitle}
+              </span>
             </div>
-          </div>
+          </Link>
 
-          <div className="relative group w-full">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input 
-              type="text" 
-              placeholder="Search area or enter budget price..." 
-              className="w-full bg-secondary/50 border-none rounded-2xl py-4 pl-12 pr-6 text-sm font-bold focus:ring-2 focus:ring-primary/20 transition-all outline-none"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </div>
-      </div>
-
-      <main className="max-w-6xl mx-auto px-4 mt-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProps.length > 0 ? (
-            filteredProps.map((p) => (
-              <motion.div key={p.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-[2rem] overflow-hidden border border-border/50 group cursor-pointer" onClick={() => navigate(`/property/${p.id}`)}>
-                <div className="relative aspect-video overflow-hidden">
-                  <img src={p.image_url || "/placeholder.jpg"} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                  <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-lg text-[8px] font-black uppercase italic">
-                    {p.features?.length || 0} Amenities
-                  </div>
-                </div>
-                <div className="p-6 space-y-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-black uppercase tracking-tight text-lg leading-none">{p.title}</h3>
-                      <p className="text-[10px] text-muted-foreground font-bold mt-2 uppercase flex items-center gap-1"><MapPin className="w-3 h-3 text-primary"/> {p.area}</p>
-                    </div>
-                    <p className="text-xl font-black italic">₹{p.rent.toLocaleString()}</p>
-                  </div>
-                  <div className="flex items-center gap-1 text-orange-500 text-xs font-black">
-                     <Star className="w-3 h-3 fill-current" /> {p.rating || "0.0"}
-                  </div>
-                </div>
-              </motion.div>
-            ))
-          ) : (
-            <div className="col-span-full py-20 text-center space-y-4">
-              <div className="w-16 h-16 bg-secondary rounded-full flex items-center justify-center mx-auto">
-                <Search className="w-8 h-8 text-muted-foreground" />
+          <div className="flex items-center gap-3">
+            {isAdmin && (
+              <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
+                {roles.map((r) => {
+                  const Icon = r.icon;
+                  const isActive = role === r.key;
+                  return (
+                    <Link
+                      key={r.key}
+                      to={r.path}
+                      onClick={() => onRoleChange(r.key)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
+                        isActive
+                          ? "bg-card text-foreground card-shadow"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">{r.label}</span>
+                    </Link>
+                  );
+                })}
               </div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">No units found matching your criteria.</p>
-            </div>
-          )}
+            )}
+
+            <button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="p-2 rounded-lg bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Toggle dark mode"
+            >
+              {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+
+            {user && (
+              <button
+                onClick={handleSignOut}
+                className="p-2 rounded-lg bg-secondary text-muted-foreground hover:text-destructive transition-colors"
+                aria-label="Sign out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
+      </header>
+
+      <main className="flex-1 container max-w-6xl mx-auto px-4 py-8">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 12, filter: "blur(4px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: -8, filter: "blur(4px)" }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+          >
+            {children}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
-      <AnimatePresence>
-        {isEditingProfile && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-background/95 backdrop-blur-xl flex items-center justify-center p-4">
-            <div className="bg-card border border-border w-full max-w-md rounded-[3rem] p-10 space-y-8 shadow-2xl relative">
-              <button onClick={() => setIsEditingProfile(false)} className="absolute top-6 right-6 p-2 bg-secondary rounded-full"><X className="w-4 h-4"/></button>
-              <div className="text-center">
-                <h2 className="text-2xl font-black uppercase italic tracking-tighter">Profile Info</h2>
-              </div>
-              <div className="space-y-4">
-                <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Full Name" className="w-full bg-secondary/50 p-4 rounded-2xl border-none outline-none font-bold" />
-                <input type="text" value={editAvatar} onChange={(e) => setEditAvatar(e.target.value)} placeholder="Avatar URL" className="w-full bg-secondary/50 p-4 rounded-2xl border-none outline-none font-bold text-xs" />
-                <button onClick={handleSaveProfile} className="w-full py-5 bg-primary text-white rounded-2xl font-black uppercase tracking-[0.2em]">Save Changes</button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <footer className="py-6 text-center border-t border-border/40 mt-auto">
+        <p className="text-xs text-muted-foreground tracking-wide">
+          © 2026 Made by MV Studios Japan.
+        </p>
+      </footer>
     </div>
   );
 };
 
-export default TenantDashboard;
+export default Layout;
