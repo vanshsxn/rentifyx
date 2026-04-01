@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   Building2, Trash2, X, Plus, Loader2, Edit3, 
   Sparkles, Zap, Droplets, Wifi, Car, Shield, Wind, Dumbbell, User, Settings, 
-  LogOut, ChevronDown, Star
+  LogOut, ChevronDown, Star, Phone, Mail, MapPin, Maximize
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -62,11 +62,19 @@ const LandlordDashboard = () => {
   const handleEdit = (p: any) => {
     setEditingId(p.id);
     setForm({
-      title: p.title, address: p.address, area: p.area, rent: p.rent.toString(),
+      title: p.title || "",
+      address: p.address || "",
+      area: p.area || "",
+      rent: p.rent?.toString() || "",
       gallery_images: p.images?.join(", ") || p.image_url || "",
-      bedrooms: (p.bedrooms || 1).toString(), bathrooms: (p.bathrooms || 1).toString(),
-      sqft: (p.sqft || "").toString(), tags: p.features || [], phone: p.phone || "",
-      contact_email: p.contact_email || "", video_url: p.video_url || "", vr_url: p.vr_url || "",
+      bedrooms: (p.bedrooms || 1).toString(),
+      bathrooms: (p.bathrooms || 1).toString(),
+      sqft: (p.sqft || "").toString(),
+      tags: p.features || [],
+      phone: p.phone || "",
+      contact_email: p.contact_email || "",
+      video_url: p.video_url || "",
+      vr_url: p.vr_url || "",
     });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -77,19 +85,34 @@ const LandlordDashboard = () => {
     if (!user) return;
     setIsSubmitting(true);
 
-    const imageArray = form.gallery_images.split(",").map(url => url.trim()).filter(url => url.startsWith("http"));
+    // Clean image array from CSV input
+    const imageArray = form.gallery_images
+      .split(",")
+      .map(url => url.trim())
+      .filter(url => url.startsWith("http"));
     
     const payload = {
-      title: form.title, address: form.address, area: form.area, rent: parseFloat(form.rent),
-      image_url: imageArray[0] || null, images: imageArray, bedrooms: parseInt(form.bedrooms),
-      bathrooms: parseInt(form.bathrooms), sqft: parseInt(form.sqft) || 0, features: form.tags,
-      phone: form.phone || null, contact_email: form.contact_email || null, video_url: form.video_url || null,
-      vr_url: form.vr_url || null, has_vr: !!form.vr_url,
+      title: form.title,
+      address: form.address,
+      area: form.area,
+      rent: parseFloat(form.rent),
+      image_url: imageArray[0] || null,
+      images: imageArray,
+      bedrooms: parseInt(form.bedrooms),
+      bathrooms: parseInt(form.bathrooms),
+      sqft: parseInt(form.sqft) || 0,
+      features: form.tags,
+      phone: form.phone || null,
+      contact_email: form.contact_email || null,
+      video_url: form.video_url || null,
+      vr_url: form.vr_url || null,
+      has_vr: !!form.vr_url,
+      landlord_id: user.id
     };
 
     const { error } = editingId 
       ? await supabase.from("properties").update(payload).eq("id", editingId) 
-      : await supabase.from("properties").insert({ ...payload, landlord_id: user.id });
+      : await supabase.from("properties").insert([payload]);
 
     if (error) { 
       toast.error("Operation failed", { description: error.message }); 
@@ -112,134 +135,206 @@ const LandlordDashboard = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Delete this listing?")) return;
-    await supabase.from("properties").delete().eq("id", id);
-    fetchData();
+    if (!window.confirm("Delete this listing permanently?")) return;
+    const { error } = await supabase.from("properties").delete().eq("id", id);
+    if (error) toast.error("Could not delete");
+    else {
+      toast.success("Listing removed");
+      fetchData();
+    }
   };
 
   const handleLogout = async () => {
-    // Brackets bypass strict property check for older type definitions
     await (supabase.auth as any).signOut();
     navigate("/auth");
   };
 
-  if (loading && !showForm) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  if (loading && !showForm) return <div className="h-screen flex flex-col items-center justify-center gap-4"><Loader2 className="w-8 h-8 animate-spin text-primary" /><p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Syncing Portfolio...</p></div>;
 
   return (
-    <div className="space-y-12 max-w-6xl mx-auto px-4 py-8">
+    <div className="max-w-6xl mx-auto px-4 py-12 space-y-12">
       {/* HEADER */}
-      <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/50 p-6 rounded-[2rem] flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
-        <div className="flex items-center gap-6">
+      <header className="flex flex-col md:flex-row items-center justify-between gap-6 bg-card border border-border/50 p-8 rounded-[3rem] shadow-xl">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/20">
+            <Building2 className="w-7 h-7" />
+          </div>
           <div>
-            <h1 className="text-2xl font-black tracking-tight text-foreground uppercase italic leading-none">Properties</h1>
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Management Hub</p>
+            <h1 className="text-3xl font-black tracking-tighter uppercase italic leading-none">Management</h1>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.3em] mt-1">Live Portfolio Tracking</p>
           </div>
         </div>
 
         <div className="flex items-center gap-4">
-          <button onClick={() => { resetForm(); setShowForm(true); }} className="px-6 py-3.5 rounded-2xl bg-primary text-primary-foreground text-xs font-black uppercase tracking-widest hover:scale-[1.02] transition-all shadow-xl">
-            <Plus className="w-4 h-4" /> Add New
+          <button onClick={() => { resetForm(); setShowForm(true); }} className="px-8 py-4 rounded-2xl bg-foreground text-background text-[11px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all shadow-xl flex items-center gap-2">
+            <Plus className="w-4 h-4" /> Add Listing
           </button>
 
           <div className="relative">
-            <button onClick={() => setShowUserMenu(!showUserMenu)} className="flex items-center gap-3 bg-card border border-border/50 p-1.5 pr-4 rounded-[1.5rem] hover:shadow-lg transition-all group">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
-                <User className="w-5 h-5" />
-              </div>
-              <ChevronDown className={`w-3 h-3 text-muted-foreground transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+            <button onClick={() => setShowUserMenu(!showUserMenu)} className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center hover:bg-border transition-colors border border-border/50">
+              <User className="w-6 h-6" />
             </button>
-
             <AnimatePresence>
               {showUserMenu && (
-                <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 15 }} className="absolute right-0 mt-3 w-48 bg-card border border-border/50 rounded-[2rem] shadow-2xl p-3 z-50">
-                  <button onClick={handleLogout} className="w-full flex items-center gap-3 p-4 hover:bg-red-500/10 rounded-xl transition-all">
+                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="absolute right-0 mt-4 w-56 bg-card border border-border rounded-3xl shadow-2xl p-2 z-50">
+                  <button onClick={handleLogout} className="w-full flex items-center gap-3 p-4 hover:bg-red-500/10 rounded-2xl transition-all group">
                     <LogOut className="w-4 h-4 text-red-500" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-red-500">Sign Out</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-red-500">End Session</span>
                   </button>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* FORM SECTION */}
+      {/* FORM MODAL-LIKE OVERLAY */}
       <AnimatePresence>
         {showForm && (
-          <motion.form initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} onSubmit={handleSubmit} className="bg-card border-2 border-primary/20 rounded-[2.5rem] p-8 space-y-8 shadow-2xl relative">
-            <div className="flex items-center justify-between border-b border-border pb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center"><Edit3 className="w-5 h-5 text-primary" /></div>
-                <h3 className="text-lg font-black uppercase tracking-[0.1em]">{editingId ? "Update Listing" : "List Property"}</h3>
+          <motion.form 
+            initial={{ opacity: 0, y: 20 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            exit={{ opacity: 0, y: 20 }} 
+            onSubmit={handleSubmit} 
+            className="bg-card border-2 border-primary/20 rounded-[3rem] p-10 space-y-10 shadow-2xl overflow-hidden relative"
+          >
+            <div className="flex items-center justify-between border-b border-border pb-8">
+              <div className="space-y-1">
+                <h3 className="text-xl font-black uppercase tracking-tighter italic flex items-center gap-3">
+                  <Edit3 className="w-6 h-6 text-primary" /> {editingId ? "Modify Asset" : "Register Property"}
+                </h3>
+                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Ensure all details are accurate for AI filtering.</p>
               </div>
-              <button type="button" onClick={resetForm} className="p-2 hover:bg-secondary rounded-full"><X className="w-5 h-5"/></button>
+              <button type="button" onClick={resetForm} className="w-12 h-12 flex items-center justify-center hover:bg-secondary rounded-2xl transition-colors"><X className="w-6 h-6"/></button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 space-y-2">
-                <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Title</label>
-                <input required placeholder="Modern Apartment" value={form.title} onChange={e => setForm({...form, title: e.target.value})} className="w-full px-5 py-4 rounded-2xl border border-border bg-background/50 outline-none text-sm font-bold" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {/* BASIC INFO */}
+              <div className="lg:col-span-2 space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Asset Name</label>
+                  <input required placeholder="Luxury PG / BHK Name" value={form.title} onChange={e => setForm({...form, title: e.target.value})} className="w-full px-6 py-5 rounded-[1.5rem] border border-border bg-background outline-none text-sm font-bold focus:ring-2 focus:ring-primary/20 transition-all" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                   <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Area / Landmark</label>
+                    <input required placeholder="DLF Phase 3" value={form.area} onChange={e => setForm({...form, area: e.target.value})} className="w-full px-6 py-5 rounded-[1.5rem] border border-border bg-background outline-none text-sm font-bold" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Full Address</label>
+                    <input required placeholder="House No, Street..." value={form.address} onChange={e => setForm({...form, address: e.target.value})} className="w-full px-6 py-5 rounded-[1.5rem] border border-border bg-background outline-none text-sm font-bold" />
+                  </div>
+                </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Rent (₹)</label>
-                <input required type="number" value={form.rent} onChange={e => setForm({...form, rent: e.target.value})} className="w-full px-5 py-4 rounded-2xl border border-border bg-background/50 outline-none text-sm font-bold" />
+
+              {/* RENT & STATS */}
+              <div className="space-y-6 bg-secondary/30 p-6 rounded-[2rem] border border-border/50">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-primary">Monthly Rent (₹)</label>
+                  <input required type="number" value={form.rent} onChange={e => setForm({...form, rent: e.target.value})} className="w-full px-6 py-5 rounded-[1.5rem] border border-primary/20 bg-background outline-none text-lg font-black text-primary" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-black uppercase text-muted-foreground">Sqft</label>
+                    <input type="number" placeholder="800" value={form.sqft} onChange={e => setForm({...form, sqft: e.target.value})} className="w-full p-4 rounded-xl border border-border bg-background text-xs font-bold" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-black uppercase text-muted-foreground">Phone</label>
+                    <input placeholder="Mobile" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} className="w-full p-4 rounded-xl border border-border bg-background text-xs font-bold" />
+                  </div>
+                </div>
               </div>
-              
+
+              {/* AMENITIES */}
               <div className="lg:col-span-3 space-y-4 pt-4 border-t border-border">
-                <label className="text-[9px] font-black uppercase tracking-widest text-primary ml-1">Amenities</label>
-                <div className="flex flex-wrap gap-2">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
+                  <Sparkles className="w-4 h-4" /> Feature Tags
+                </label>
+                <div className="flex flex-wrap gap-3">
                   {availableTags.map((tag) => (
-                    <button key={tag.id} type="button" onClick={() => toggleTag(tag.id)} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all border ${form.tags.includes(tag.id) ? "bg-primary border-primary text-white" : "bg-transparent border-border text-muted-foreground"}`}>
-                      <tag.icon className="w-3.5 h-3.5" /> {tag.id}
+                    <button key={tag.id} type="button" onClick={() => toggleTag(tag.id)} className={`flex items-center gap-3 px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase transition-all border-2 ${form.tags.includes(tag.id) ? "bg-primary border-primary text-white shadow-lg shadow-primary/20 scale-105" : "bg-transparent border-border text-muted-foreground hover:border-primary/50"}`}>
+                      <tag.icon className="w-4 h-4" /> {tag.id}
                     </button>
                   ))}
                 </div>
               </div>
 
-              <div className="lg:col-span-3 space-y-2">
-                <label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Images (CSV)</label>
-                <textarea value={form.gallery_images} onChange={e => setForm({...form, gallery_images: e.target.value})} className="w-full px-5 py-4 rounded-2xl border border-border bg-background/50 text-xs min-h-[80px] outline-none" />
+              {/* MEDIA SECTION */}
+              <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2"><Maximize className="w-4 h-4" /> VR/360 Virtual Tour URL</label>
+                  <input placeholder="https://..." value={form.vr_url} onChange={e => setForm({...form, vr_url: e.target.value})} className="w-full px-6 py-4 rounded-2xl border border-border bg-background text-xs font-bold" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Image Gallery (Links separated by comma)</label>
+                  <textarea placeholder="Paste high-quality unsplash or host links..." value={form.gallery_images} onChange={e => setForm({...form, gallery_images: e.target.value})} className="w-full px-6 py-4 rounded-2xl border border-border bg-background text-xs min-h-[100px] font-bold" />
+                </div>
               </div>
             </div>
 
-            <button type="submit" disabled={isSubmitting} className="w-full py-5 rounded-2xl bg-foreground text-background text-[11px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all disabled:opacity-50">
-              {isSubmitting ? "Saving..." : "Publish Listing"}
-            </button>
+            <div className="flex gap-4 pt-6">
+               <button type="submit" disabled={isSubmitting} className="flex-1 py-6 rounded-[2rem] bg-foreground text-background text-xs font-black uppercase tracking-[0.3em] hover:bg-primary hover:text-white transition-all disabled:opacity-50 active:scale-95 shadow-2xl">
+                {isSubmitting ? "Processing..." : "Deploy Listing to Marketplace"}
+              </button>
+            </div>
           </motion.form>
         )}
       </AnimatePresence>
 
       {/* PORTFOLIO GRID */}
-      <section className="space-y-6">
-        <h2 className="text-[10px] font-black uppercase tracking-[0.3em] flex items-center gap-2 px-2 text-primary">
-          <Building2 className="w-4 h-4" /> Active Portfolio ({properties.length})
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {properties.map((p) => (
-            <div key={p.id} className="flex items-center gap-5 bg-card border border-border p-5 rounded-[2.5rem] hover:border-primary/50 transition-all shadow-sm group">
-              <div className="w-24 h-24 rounded-[1.5rem] overflow-hidden relative">
-                <img src={p.image_url || "/placeholder.jpg"} className="w-full h-full object-cover" alt="property" />
-                <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg flex items-center gap-1">
-                  <Star className="w-2.5 h-2.5 fill-yellow-500 text-yellow-500" />
-                  <span className="text-[8px] font-black text-white">{p.rating || "5.0"}</span>
-                </div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-black uppercase truncate">{p.title}</h3>
-                <p className="text-[10px] font-bold text-primary">₹{p.rent.toLocaleString()}</p>
-                <div className="flex gap-2 mt-4">
-                  <button onClick={() => handleEdit(p)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary text-[9px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all">
-                    <Edit3 className="w-3.5 h-3.5" /> Edit
-                  </button>
-                  <button onClick={() => handleDelete(p.id)} className="p-2.5 rounded-xl bg-secondary hover:bg-red-500 hover:text-white text-muted-foreground transition-all">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
+      <section className="space-y-8">
+        <div className="flex items-center justify-between px-4">
+          <h2 className="text-[11px] font-black uppercase tracking-[0.4em] flex items-center gap-3 text-muted-foreground">
+            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" /> Asset Inventory ({properties.length})
+          </h2>
         </div>
+
+        {properties.length === 0 ? (
+          <div className="py-32 text-center bg-card border border-dashed border-border rounded-[3rem]">
+            <Building2 className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
+            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">No properties registered yet.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
+            {properties.map((p) => (
+              <motion.div layout key={p.id} className="group bg-card border border-border p-6 rounded-[3rem] hover:border-primary/50 transition-all shadow-sm hover:shadow-2xl flex flex-col sm:flex-row items-center gap-8">
+                <div className="w-full sm:w-40 h-40 rounded-[2.5rem] overflow-hidden relative flex-shrink-0">
+                  <img src={p.image_url || "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=800"} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="property" />
+                  <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                    <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
+                    <span className="text-[10px] font-black text-white">{p.rating || "5.0"}</span>
+                  </div>
+                </div>
+
+                <div className="flex-1 min-w-0 space-y-4">
+                  <div>
+                    <h3 className="text-xl font-black uppercase tracking-tighter truncate">{p.title}</h3>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1.5 mt-1">
+                      <MapPin className="w-3 h-3 text-primary" /> {p.area}
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-center justify-between border-t border-border/50 pt-4">
+                    <p className="text-lg font-black text-primary italic">₹{p.rent?.toLocaleString()}</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleEdit(p)} className="w-12 h-12 flex items-center justify-center rounded-2xl bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all">
+                        <Edit3 className="w-5 h-5" />
+                      </button>
+                      <button onClick={() => handleDelete(p.id)} className="w-12 h-12 flex items-center justify-center rounded-2xl bg-secondary hover:bg-red-500 hover:text-white text-muted-foreground transition-all">
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </section>
+
+      <footer className="py-12 text-center opacity-20">
+        <p className="text-[9px] font-black uppercase tracking-[0.5em]">Systems Optimized by MV Studios Japan</p>
+      </footer>
     </div>
   );
 };
