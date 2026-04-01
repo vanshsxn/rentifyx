@@ -1,20 +1,35 @@
-import { useNavigate } from "react-router-dom"; 
-import { motion, AnimatePresence } from "framer-motion"; 
-import { ArrowRight, Building2, Sparkles, Star, MapPin, Maximize, Wallet, Home, Users, TrendingDown, X, Zap, IndianRupee, LayoutDashboard } from "lucide-react"; 
-import { useEffect, useState } from "react"; 
+import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  ArrowRight, 
+  Sparkles, 
+  Star, 
+  MapPin, 
+  Maximize, 
+  Wallet, 
+  Home, 
+  Users, 
+  TrendingDown, 
+  X, 
+  Zap, 
+  IndianRupee, 
+  LayoutDashboard,
+  LogIn
+} from "lucide-react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-interface DBProperty { 
-  id: string; 
-  title: string; 
-  address: string; 
-  area: string; 
-  rent: number; 
-  rating: number; 
-  image_url: string | null; 
-  tags: string[]; 
-  has_vr: boolean; 
+interface DBProperty {
+  id: string;
+  title: string;
+  address: string;
+  area: string;
+  rent: number;
+  rating: number;
+  image_url: string | null;
+  tags: string[];
+  has_vr: boolean;
 }
 
 const Landing = () => {
@@ -32,19 +47,38 @@ const Landing = () => {
     getFeatured();
   }, []);
 
-  const checkUser = async () => {
-    const { data: { user } } = await (supabase.auth as any).getUser();
-    
-    if (user) {
+const checkUser = async () => {
+  try {
+    // Force 'any' to bypass the "Property getSession does not exist" TS error
+    const { data: { session }, error: sessionError } = await (supabase.auth as any).getSession();
+
+    if (sessionError) throw sessionError;
+
+    if (session?.user) {
       setIsLoggedIn(true);
-      const { data: profile } = await supabase
+      
+      // Fetch the user's role from your profiles table
+      const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("role")
-        .eq("id", user.id)
+        .eq("id", session.user.id)
         .single();
-      setUserRole(profile?.role || "tenant");
+
+      if (!profileError && profile) {
+        setUserRole(profile.role);
+      } else {
+        setUserRole("tenant"); // Default fallback
+      }
+    } else {
+      setIsLoggedIn(false);
+      setUserRole(null);
     }
-  };
+  } catch (error) {
+    console.error("Auth sync error:", error);
+    setIsLoggedIn(false);
+    setUserRole(null);
+  }
+};
 
   const getFeatured = async () => {
     let { data, error } = await supabase
@@ -118,7 +152,7 @@ const Landing = () => {
                 <div className="space-y-2">
                   <h2 className="text-2xl font-black uppercase tracking-tighter italic">AI Budget Matcher</h2>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase leading-relaxed">
-                    We'll use the Knapsack Algorithm to find the <br /> highest-value property for your money.
+                    Analyzing market data to find your <br /> perfect high-value match.
                   </p>
                 </div>
 
@@ -146,7 +180,7 @@ const Landing = () => {
         )}
       </AnimatePresence>
 
-      {/* Cinematic Hero Section with local video */}
+      {/* Hero Section */}
       <section className="relative min-h-[75vh] flex items-center justify-center px-4 pt-16 pb-24 overflow-hidden bg-slate-950">
         <video 
           autoPlay 
@@ -187,7 +221,7 @@ const Landing = () => {
                 </>
               ) : (
                 <>
-                  <Building2 className="w-4 h-4" /> Landlord Hub
+                  <LogIn className="w-4 h-4" /> Login
                 </>
               )}
             </button>
@@ -195,6 +229,7 @@ const Landing = () => {
         </div>
       </section>
 
+      {/* Floating Filter Cards */}
       <div className="container max-w-5xl mx-auto px-4 -mt-16 relative z-30">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {filters.map((f) => (
@@ -215,6 +250,7 @@ const Landing = () => {
         </div>
       </div>
 
+      {/* Marketplace Section */}
       <main className="container max-w-6xl mx-auto px-4 py-20 space-y-10">
         <div className="flex flex-col md:flex-row justify-between items-end gap-4 border-b border-border/50 pb-8">
           <div className="space-y-1">
