@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   Search, MapPin, Star, Heart, Wifi, Car, Droplets, Shield, Wind, Zap, 
   Dumbbell, SlidersHorizontal, ArrowLeftRight, X, 
-  Loader2, User, Settings, LogOut, ChevronDown
+  Loader2, User, Settings, LogOut, ChevronDown, Camera
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -18,8 +18,8 @@ const TenantDashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [compareList, setCompareList] = useState<any[]>([]);
-  const [showCompareModal, setShowCompareModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   const filterTags = [
     { id: "WiFi", icon: Wifi },
@@ -32,8 +32,21 @@ const TenantDashboard = () => {
   ];
 
   useEffect(() => {
+    fetchUserData();
     fetchProperties();
   }, []);
+
+  const fetchUserData = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+      setUserRole(data?.role || "tenant");
+    }
+  };
 
   const fetchProperties = async () => {
     setLoading(true);
@@ -52,49 +65,47 @@ const TenantDashboard = () => {
   useEffect(() => {
     let result = [...properties];
 
-    // 1. SEARCH FILTER
+    // 1. DYNAMIC SEARCH (TEXT OR PRICE)
     if (searchQuery) {
-      result = result.filter(p => 
-        p.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.area?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      const isNumeric = !isNaN(Number(searchQuery));
+      if (isNumeric) {
+        // If searching a number, treat as Max Budget
+        result = result.filter(p => Number(p.rent) <= Number(searchQuery));
+      } else {
+        result = result.filter(p => 
+          p.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.area?.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      }
     }
 
-    const maxRent = searchParams.get("maxRent");
-    const isOptimized = searchParams.get("optimize") === "true";
+    // 2. KNAPSACK OPTIMIZATION LOGIC
+    const maxRentParam = searchParams.get("maxRent");
+    const isOptimized = searchParams.get("optimize") === "true" || !!searchQuery;
 
-    // 2. BUDGET & KNAPSACK RANKING LOGIC
-    if (maxRent) {
-      const W = parseInt(maxRent);
-      
-      if (isOptimized) {
-        /**
-         * GREEDY KNAPSACK RANKING
-         * Instead of hiding properties that don't "fit" a sum,
-         * we show all properties <= Budget, but sort them by their 
-         * Value-to-Cost ratio (Efficiency).
-         */
-        result = result
-          .filter(p => Number(p.rent) <= W) // Keep everything within budget
-          .map(item => {
-            const matchingSelectedTags = item.features?.filter((f: string) => 
-              selectedTags.includes(f)
-            ).length || 0;
+    if (isOptimized) {
+      const budgetLimit = searchQuery && !isNaN(Number(searchQuery)) 
+        ? Number(searchQuery) 
+        : (maxRentParam ? Number(maxRentParam) : Infinity);
 
-            const baseValue = (item.rating || 4.0) * 20; // Weights
-            const selectionBonus = matchingSelectedTags * 30;
-            const facilityBonus = (item.features?.length || 0) * 5;
-            
-            const totalValue = baseValue + selectionBonus + facilityBonus;
-            const efficiency = totalValue / Number(item.rent); // Value per Rupee
+      // Group by Price to find "Best Amenities for the Price"
+      const knapsackMap = new Map();
 
-            return { ...item, efficiency };
-          })
-          .sort((a, b) => b.efficiency - a.efficiency); // Best deals at the top
-      } else {
-        // Standard non-AI filter: strictly by budget
-        result = result.filter(p => Number(p.rent) <= W);
-      }
+      result.forEach(item => {
+        const price = Number(item.rent);
+        const amenitiesCount = item.features?.length || 0;
+
+        if (price <= budgetLimit) {
+          // If we see the same price, keep only the one with MORE tags (Knapsack Goal)
+          if (!knapsackMap.has(price) || amenitiesCount > knapsackMap.get(price).features?.length) {
+            knapsackMap.set(price, item);
+          }
+        }
+      });
+
+      // Convert back to array and sort by most tags descending (Best Value First)
+      result = Array.from(knapsackMap.values())
+        .sort((a, b) => (b.features?.length || 0) - (a.features?.length || 0));
     }
 
     // 3. FACILITY TAG FILTER
@@ -105,25 +116,6 @@ const TenantDashboard = () => {
     setFilteredProps(result);
   }, [searchQuery, selectedTags, properties, searchParams]);
 
-  const toggleTag = (tagId: string) => {
-    setSelectedTags(prev => 
-      prev.includes(tagId) ? prev.filter(t => t !== tagId) : [...prev, tagId]
-    );
-  };
-
-  const toggleCompare = (p: any, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (compareList.find(item => item.id === p.id)) {
-      setCompareList(compareList.filter(item => item.id !== p.id));
-    } else {
-      if (compareList.length >= 3) {
-        toast.error("Limit Reached", { description: "You can compare up to 3 units." });
-        return;
-      }
-      setCompareList([...compareList, p]);
-    }
-  };
-
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/auth");
@@ -131,56 +123,53 @@ const TenantDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background pb-32">
-      {/* HEADER & SEARCH */}
+      {/* HEADER */}
       <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/50 px-4 py-6">
         <div className="max-w-6xl mx-auto space-y-6">
-          <div className="flex flex-col md:flex-row gap-4 items-center">
-            <div className="relative flex-1 group w-full">
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+            {/* Dynamic Role Heading */}
+            <h1 className="text-xl font-black italic tracking-tighter uppercase text-primary">
+              {userRole === 'landlord' ? "Landlord Hub" : "Tenant Profile"}
+            </h1>
+
+            <div className="relative flex-1 group w-full max-w-xl">
               <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
               <input 
                 type="text" 
-                placeholder="Search by area or PG name..." 
+                placeholder="Search area or enter max price (e.g. 15000)..." 
                 className="w-full bg-secondary/50 border-none rounded-[1.5rem] py-4 pl-12 pr-6 text-sm font-bold focus:ring-2 focus:ring-primary/20 transition-all outline-none"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
 
-            <div className="hidden lg:flex items-center gap-3 bg-foreground text-background px-6 py-3.5 rounded-[1.5rem]">
-               <SlidersHorizontal className="w-4 h-4 text-primary" />
-               <span className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap">
-                {searchParams.get("optimize") === "true" ? "AI Budget Mode" : "Standard View"}
-               </span>
-            </div>
-
             <div className="relative">
               <button 
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-3 bg-card border border-border/50 p-1.5 pr-4 rounded-[1.5rem] hover:shadow-lg hover:border-primary/30 transition-all group"
+                className="flex items-center gap-3 bg-card border border-border/50 p-1.5 pr-4 rounded-[1.5rem] hover:shadow-lg transition-all group"
               >
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
                   <User className="w-5 h-5" />
                 </div>
                 <div className="text-left hidden sm:block">
-                  <p className="text-[10px] font-black uppercase tracking-tighter leading-none italic">Account</p>
-                  <p className="text-[8px] font-bold text-muted-foreground uppercase mt-1 tracking-tighter">Verified Member</p>
+                  <p className="text-[10px] font-black uppercase tracking-tighter leading-none italic">
+                    {userRole === 'landlord' ? "Landlord Account" : "Tenant Account"}
+                  </p>
+                  <p className="text-[8px] font-bold text-muted-foreground uppercase mt-1 tracking-tighter italic">Verified Access</p>
                 </div>
-                <ChevronDown className={`w-3 h-3 text-muted-foreground transition-transform duration-300 ${showUserMenu ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-3 h-3 text-muted-foreground transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
               </button>
 
               <AnimatePresence>
                 {showUserMenu && (
                   <motion.div 
-                    initial={{ opacity: 0, y: 15, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 15, scale: 0.95 }}
-                    className="absolute right-0 mt-3 w-64 bg-card border border-border/50 rounded-[2rem] shadow-2xl p-3 z-50 backdrop-blur-2xl overflow-hidden"
+                    initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 15 }}
+                    className="absolute right-0 mt-3 w-64 bg-card border border-border/50 rounded-[2rem] shadow-2xl p-3 z-50 backdrop-blur-2xl"
                   >
-                    <button onClick={() => { setShowUserMenu(false); navigate("/profile"); }} className="w-full flex items-center gap-3 p-4 hover:bg-primary/10 rounded-xl transition-all group">
-                      <Settings className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                    <button onClick={() => navigate("/profile")} className="w-full flex items-center gap-3 p-4 hover:bg-primary/10 rounded-xl transition-all group">
+                      <Settings className="w-4 h-4 text-muted-foreground group-hover:text-primary" />
                       <span className="text-[10px] font-black uppercase tracking-widest">Edit Profile</span>
                     </button>
-                    <div className="h-[1px] bg-border/50 my-2 mx-2" />
                     <button onClick={handleLogout} className="w-full flex items-center gap-3 p-4 hover:bg-red-500/10 rounded-xl transition-all group">
                       <LogOut className="w-4 h-4 text-red-500" />
                       <span className="text-[10px] font-black uppercase tracking-widest text-red-500">Sign Out</span>
@@ -191,15 +180,14 @@ const TenantDashboard = () => {
             </div>
           </div>
 
+          {/* FACILITY TAGS */}
           <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
             {filterTags.map((tag) => (
               <button
                 key={tag.id}
-                onClick={() => toggleTag(tag.id)}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase whitespace-nowrap transition-all border ${
-                  selectedTags.includes(tag.id)
-                    ? "bg-primary border-primary text-white shadow-lg shadow-primary/20 scale-105"
-                    : "bg-card border-border text-muted-foreground hover:border-primary/50"
+                onClick={() => setSelectedTags(prev => prev.includes(tag.id) ? prev.filter(t => t !== tag.id) : [...prev, tag.id])}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all border ${
+                  selectedTags.includes(tag.id) ? "bg-primary border-primary text-white scale-105" : "bg-card border-border text-muted-foreground"
                 }`}>
                 <tag.icon className="w-3.5 h-3.5" />
                 {tag.id}
@@ -209,79 +197,40 @@ const TenantDashboard = () => {
         </div>
       </div>
 
+      {/* MAIN CONTENT */}
       <main className="max-w-6xl mx-auto px-4 mt-10">
-        <div className="flex items-center justify-between mb-8 px-2">
-            <div>
-                <h2 className="text-2xl font-black uppercase tracking-tighter italic">Recommended Units</h2>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{filteredProps.length} Results available</p>
-            </div>
-        </div>
-
         {loading ? (
-            <div className="h-64 flex flex-col items-center justify-center gap-4">
-                <Loader2 className="w-10 h-10 animate-spin text-primary" />
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Analyzing Budget...</span>
-            </div>
+          <div className="h-64 flex flex-col items-center justify-center gap-4">
+            <Loader2 className="w-10 h-10 animate-spin text-primary" />
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground italic">Calculating Best Value...</span>
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             <AnimatePresence mode="popLayout">
               {filteredProps.map((p) => (
-                <motion.div 
-                  layout
-                  key={p.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  className="group cursor-pointer space-y-4"
-                  onClick={() => navigate(`/property/${p.id}`)}
-                >
+                <motion.div layout key={p.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="group cursor-pointer space-y-4" onClick={() => navigate(`/property/${p.id}`)}>
                   <div className="relative aspect-[4/3] rounded-[2.5rem] overflow-hidden shadow-sm group-hover:shadow-2xl transition-all duration-500">
                     <img src={p.image_url || "/placeholder.jpg"} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={p.title} />
-                    
-                    <button 
-                      onClick={(e) => toggleCompare(p, e)}
-                      className={`absolute top-5 right-16 p-3 rounded-2xl backdrop-blur-md transition-all z-10 ${
-                        compareList.find(item => item.id === p.id) 
-                        ? "bg-primary text-white scale-110" 
-                        : "bg-background/20 text-white hover:bg-background/40"
-                      }`}
-                    >
-                      <ArrowLeftRight className="w-4 h-4" />
-                    </button>
-
-                    <button className="absolute top-5 right-5 p-3 bg-background/20 backdrop-blur-md rounded-2xl text-white hover:bg-red-500 transition-colors z-10">
+                    <div className="absolute top-5 right-5 flex gap-2">
+                      <div className="p-3 bg-background/20 backdrop-blur-md rounded-2xl text-white">
                         <Heart className="w-4 h-4" />
-                    </button>
-                    
-                    <div className="absolute bottom-5 left-5 flex gap-2">
-                        {p.has_vr && <div className="px-3 py-1.5 bg-primary text-white rounded-lg text-[8px] font-black uppercase tracking-widest">VR Ready</div>}
-                        <div className="px-3 py-1.5 bg-white/90 backdrop-blur-md text-black rounded-lg text-[8px] font-black uppercase tracking-widest">{p.sqft || 0} SQFT</div>
+                      </div>
+                    </div>
+                    <div className="absolute bottom-5 left-5 px-3 py-1.5 bg-white/90 backdrop-blur-md text-black rounded-lg text-[8px] font-black uppercase tracking-widest italic">
+                      {p.features?.length || 0} Amenities Included
                     </div>
                   </div>
 
-                  <div className="px-2 space-y-2">
+                  <div className="px-2">
                     <div className="flex justify-between items-start">
-                        <div className="space-y-1">
-                            <h3 className="text-lg font-black uppercase tracking-tight group-hover:text-primary transition-colors leading-none">{p.title}</h3>
-                            <p className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-bold uppercase">
-                                <MapPin className="w-3 h-3 text-primary/60" /> {p.area}
-                            </p>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-sm font-black text-foreground">₹{p.rent.toLocaleString()}</p>
-                            <div className="flex items-center gap-1 text-orange-500 text-[10px] font-black">
-                                <Star className="w-3 h-3 fill-current" /> {p.rating || "4.8"}
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                        {p.features?.map((f: string) => (
-                            <span key={f} className={`text-[8px] font-black uppercase tracking-tighter px-2 py-1 rounded-md border transition-colors ${
-                                selectedTags.includes(f) 
-                                ? "bg-primary/20 border-primary/40 text-primary ring-1 ring-primary/20" 
-                                : "bg-secondary border-border/50 text-muted-foreground/60"
-                            }`}>{f}</span>
-                        ))}
+                      <div className="space-y-1">
+                        <h3 className="text-lg font-black uppercase tracking-tight leading-none group-hover:text-primary transition-colors">{p.title}</h3>
+                        <p className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-bold uppercase"><MapPin className="w-3 h-3" /> {p.area}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-black">₹{p.rent.toLocaleString()}</p>
+                        <div className="flex items-center gap-1 text-orange-500 text-[10px] font-black"><Star className="w-3 h-3 fill-current" /> {p.rating || "4.8"}</div>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -289,17 +238,7 @@ const TenantDashboard = () => {
             </AnimatePresence>
           </div>
         )}
-
-        {!loading && filteredProps.length === 0 && (
-            <div className="py-32 text-center">
-                <h3 className="text-xl font-black uppercase tracking-tighter italic">No Units Fit This Budget</h3>
-                <p className="text-xs text-muted-foreground font-bold uppercase mt-2">Adjust your price range or remove facility filters.</p>
-            </div>
-        )}
       </main>
-
-      {/* FOOTER COMPONENTS (Compare Bar & Modal) */}
-      {/* ... keep your existing CompareList and ShowCompareModal code here ... */}
     </div>
   );
 };

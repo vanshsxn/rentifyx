@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom"; 
 import { motion, AnimatePresence } from "framer-motion"; 
-import { ArrowRight, Building2, Sparkles, Star, MapPin, Maximize, Wallet, Home, Users, TrendingDown, X, Zap, IndianRupee } from "lucide-react"; 
+import { ArrowRight, Building2, Sparkles, Star, MapPin, Maximize, Wallet, Home, Users, TrendingDown, X, Zap, IndianRupee, LayoutDashboard } from "lucide-react"; 
 import { useEffect, useState } from "react"; 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -21,43 +21,70 @@ const Landing = () => {
   const navigate = useNavigate();
   const [list, setList] = useState<DBProperty[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   
   // --- Budget Modal State ---
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [tempBudget, setTempBudget] = useState("");
 
   useEffect(() => {
-    const getFeatured = async () => {
-      let { data, error } = await supabase
-        .from("properties")
-        .select("*")
-        .eq("is_featured", true)
-        .limit(6);
-
-      if (error || !data || data.length === 0) {
-        const { data: topRated } = await supabase
-          .from("properties")
-          .select("*")
-          .order("rating", { ascending: false })
-          .limit(6);
-        setList(topRated || []);
-      } else {
-        setList(data);
-      }
-      setLoading(false);
-    };
+    checkUser();
     getFeatured();
   }, []);
+
+  const checkUser = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      setIsLoggedIn(true);
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", session.user.id)
+        .single();
+      setUserRole(profile?.role || "tenant");
+    }
+  };
+
+  const getFeatured = async () => {
+    let { data, error } = await supabase
+      .from("properties")
+      .select("*")
+      .eq("is_featured", true)
+      .limit(6);
+
+    if (error || !data || data.length === 0) {
+      const { data: topRated } = await supabase
+        .from("properties")
+        .select("*")
+        .order("rating", { ascending: false })
+        .limit(6);
+      setList(topRated || []);
+    } else {
+      setList(data);
+    }
+    setLoading(false);
+  };
 
   const handleBudgetOptimization = () => {
     if (!tempBudget) return toast.error("Enter a budget first!");
     setShowBudgetModal(false);
-    // Passing maxRent and a flag to trigger the Knapsack logic on the next page
     navigate(`/tenant?maxRent=${tempBudget}&optimize=true`);
   };
 
+  // Helper to handle the "Landlord Hub" button click
+  const handleDashboardRedirect = () => {
+    if (!isLoggedIn) {
+      navigate("/auth");
+    } else {
+      // Redirect based on role
+      if (userRole === "landlord") navigate("/landlord");
+      else navigate("/tenant");
+    }
+  };
+
   const filters = [
-    { i: Wallet, l: "Budget PGs", d: "Smart Optimizer", a: () => setShowBudgetModal(true) }, // Trigger Modal
+    { i: Wallet, l: "Budget PGs", d: "Smart Optimizer", a: () => setShowBudgetModal(true) },
     { i: Home, l: "Furnished", d: "Ready to move", a: () => navigate("/tenant?tag=Furnished") },
     { i: Users, l: "Shared", d: "Split the cost", a: () => navigate("/tenant?tag=Shared") },
     { i: TrendingDown, l: "Best Deals", d: "Top rated", a: () => navigate("/tenant?sort=value") },
@@ -94,7 +121,7 @@ const Landing = () => {
                 <div className="space-y-2">
                   <h2 className="text-2xl font-black uppercase tracking-tighter italic">AI Budget Matcher</h2>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase leading-relaxed">
-                    We'll use the 0/1 Knapsack Algorithm to find the <br /> highest-rated property combo for your money.
+                    We'll use the Knapsack Algorithm to find the <br /> highest-value property for your money.
                   </p>
                 </div>
 
@@ -137,7 +164,7 @@ const Landing = () => {
               <span className="text-primary italic">RELAX.</span>
             </h1>
             <p className="text-base text-white/60 font-medium max-w-md mx-auto leading-relaxed">
-              The high-performance platform for modern tenants, landlords, and administrators.
+              The high-performance platform for modern tenants and landlords.
             </p>
           </motion.div>
 
@@ -145,8 +172,19 @@ const Landing = () => {
             <button onClick={() => navigate("/tenant")} className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-primary text-primary-foreground text-[12px] font-bold uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-primary/20">
               Browse Listings <ArrowRight className="w-4 h-4" />
             </button>
-            <button onClick={() => navigate("/auth")} className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 text-white text-[12px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all">
-              <Building2 className="w-4 h-4" /> Landlord Hub
+            
+            {/* Dynamic Button based on Login Status and Role */}
+            <button onClick={handleDashboardRedirect} className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 text-white text-[12px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all">
+              {isLoggedIn ? (
+                <>
+                  <LayoutDashboard className="w-4 h-4" /> 
+                  {userRole === 'landlord' ? "Landlord Hub" : "My Dashboard"}
+                </>
+              ) : (
+                <>
+                  <Building2 className="w-4 h-4" /> Landlord Hub
+                </>
+              )}
             </button>
           </motion.div>
         </div>
