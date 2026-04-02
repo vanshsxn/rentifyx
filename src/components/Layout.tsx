@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, Building2, Shield, Search, Moon, Sun, LogOut } from "lucide-react";
+import { Home, Moon, Sun, LogOut } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,25 +13,13 @@ interface LayoutProps {
   onRoleChange: (role: "tenant" | "landlord" | "admin") => void;
 }
 
-const roles = [
-  { key: "tenant" as const, label: "Tenant", icon: Search, path: "/tenant" },
-  { key: "landlord" as const, label: "Landlord", icon: Building2, path: "/landlord" },
-  { key: "admin" as const, label: "Admin", icon: Shield, path: "/admin" },
-];
-
-const Layout = ({ children, role, onRoleChange }: LayoutProps) => {
+const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
   const { theme, setTheme } = useTheme();
-  const { user, userRole, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
-  const MASTER_ADMIN_EMAIL = "vanshsxn2006@gmail.com";
-  const isAdmin = user?.email === MASTER_ADMIN_EMAIL;
-
-  // --- CHANGED THIS SECTION ---
-  // Always show "Properties" instead of role-specific hubs
   const headerTitle = " ";
-  // ----------------------------
 
   const handleSignOut = async () => {
     await signOut();
@@ -43,6 +31,7 @@ const Layout = ({ children, role, onRoleChange }: LayoutProps) => {
     <div className="min-h-screen flex flex-col bg-background transition-colors duration-300">
       <header className="sticky top-0 z-40 bg-card/80 backdrop-blur-lg border-b border-border transition-colors duration-300">
         <div className="container max-w-6xl mx-auto flex items-center justify-between h-16 px-4">
+          
           <Link to="/" className="flex items-center gap-2">
             <Home className="w-5 h-5 text-primary" />
             <div>
@@ -54,29 +43,8 @@ const Layout = ({ children, role, onRoleChange }: LayoutProps) => {
           </Link>
 
           <div className="flex items-center gap-3">
-            {isAdmin && (
-              <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
-                {roles.map((r) => {
-                  const Icon = r.icon;
-                  const isActive = role === r.key;
-                  return (
-                    <Link
-                      key={r.key}
-                      to={r.path}
-                      onClick={() => onRoleChange(r.key)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
-                        isActive
-                          ? "bg-card text-foreground card-shadow"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      <Icon className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">{r.label}</span>
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
+
+            {/* ❌ ROLE TOGGLE COMPLETELY REMOVED */}
 
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
@@ -95,6 +63,7 @@ const Layout = ({ children, role, onRoleChange }: LayoutProps) => {
                 <LogOut className="w-4 h-4" />
               </button>
             )}
+
           </div>
         </div>
       </header>
