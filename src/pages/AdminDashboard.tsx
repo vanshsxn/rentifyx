@@ -10,8 +10,8 @@ interface PropertyRow {
   title: string;
   area: string;
   rent: number;
-  rating: number;           // Average of Tenant ratings
-  admin_rating: number | null; // Your override
+  rating: number;
+  admin_rating: number | null;
   image_url: string | null;
   landlord_id: string;
 }
@@ -31,7 +31,6 @@ const AdminDashboard = () => {
   const [tab, setTab] = useState<"properties" | "users">("properties");
   const [searchQuery, setSearchQuery] = useState("");
   
-  // Rating States
   const [editingRating, setEditingRating] = useState<string | null>(null);
   const [ratingValue, setRatingValue] = useState("");
 
@@ -57,6 +56,25 @@ const AdminDashboard = () => {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  // --- DELETE LOGIC ---
+  const handleDeleteProperty = async (propertyId: string) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this property permanently?");
+    if (!confirmDelete) return;
+
+    const { error } = await supabase
+      .from("properties")
+      .delete()
+      .eq("id", propertyId);
+
+    if (error) {
+      toast.error("Delete failed: Check RLS policies or foreign keys");
+      console.error(error);
+    } else {
+      toast.success("Property removed from database");
+      setProperties(prev => prev.filter(p => p.id !== propertyId));
+    }
+  };
 
   const handleSetAdminRating = async (propertyId: string) => {
     const val = parseFloat(ratingValue);
@@ -87,7 +105,6 @@ const AdminDashboard = () => {
 
   return (
     <div className="p-4 md:p-8 space-y-8 bg-background min-h-screen font-sans">
-      {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-1">
           <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tighter italic flex items-center gap-3">
@@ -117,7 +134,6 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* DATA TABLE */}
       <div className="bg-card border border-border rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl">
         {loading ? (
           <div className="py-20 flex flex-col items-center gap-4">
@@ -149,8 +165,6 @@ const AdminDashboard = () => {
               <tbody className="text-[11px] font-bold uppercase">
                 {tab === "properties" ? (
                   filteredProperties.map(p => {
-                    // This is how the tenant's rating is "affected" by your admin rating
-                    // If you set an admin rating, it averages with the tenant rating.
                     const finalRating = p.admin_rating
                       ? ((p.admin_rating + (p.rating || 0)) / 2).toFixed(1)
                       : (p.rating || 0).toFixed(1);
@@ -167,7 +181,6 @@ const AdminDashboard = () => {
                           </div>
                         </td>
 
-                        {/* ADMIN CHANGE SECTION */}
                         <td className="px-6 md:px-8 py-4">
                           {editingRating === p.id ? (
                             <div className="flex items-center gap-2">
@@ -211,7 +224,10 @@ const AdminDashboard = () => {
                         </td>
 
                         <td className="px-6 md:px-8 py-4 text-right">
-                          <button className="p-2 text-destructive hover:bg-destructive/10 rounded-xl transition-all">
+                          <button 
+                            onClick={() => handleDeleteProperty(p.id)}
+                            className="p-2 text-destructive hover:bg-destructive/10 rounded-xl transition-all"
+                          >
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </td>
@@ -219,8 +235,24 @@ const AdminDashboard = () => {
                     );
                   })
                 ) : (
-                   /* User Mapping Logic... */
-                   <p className="p-8 opacity-40">User tab logic remains as provided previously...</p>
+                  users.map(u => (
+                    <tr key={u.id} className="border-b border-border/50 hover:bg-secondary/10 transition-colors">
+                      <td className="px-6 md:px-8 py-4">
+                        <div className="flex flex-col">
+                          <span>{u.full_name || "No Name"}</span>
+                          <span className="text-[8px] opacity-40 lowercase">{u.email}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 md:px-8 py-4">
+                        <span className={`px-2 py-1 rounded-md text-[9px] ${userRoles[u.id] === 'admin' ? 'bg-primary/20 text-primary' : 'bg-secondary text-muted-foreground'}`}>
+                          {userRoles[u.id] || "tenant"}
+                        </span>
+                      </td>
+                      <td className="px-6 md:px-8 py-4 opacity-40">
+                        {new Date(u.created_at).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>
