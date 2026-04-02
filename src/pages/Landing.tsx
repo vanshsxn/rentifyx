@@ -120,7 +120,7 @@ const Landing = () => {
     }
 
     if (userRole === "admin") {
-      navigate("/admin-dashboard"); // Redirects to Admin Portal
+      navigate("/admin");
     } else if (userRole === "landlord") {
       navigate("/landlord");
     } else {
