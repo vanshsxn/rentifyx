@@ -14,7 +14,8 @@ import {
   Zap, 
   IndianRupee, 
   LayoutDashboard,
-  LogIn
+  LogIn,
+  Shield 
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,38 +48,43 @@ const Landing = () => {
     getFeatured();
   }, []);
 
-const checkUser = async () => {
-  try {
-    // Force 'any' to bypass the "Property getSession does not exist" TS error
-    const { data: { session }, error: sessionError } = await (supabase.auth as any).getSession();
+  const checkUser = async () => {
+    try {
+      const { data: { session }, error: sessionError } = await (supabase.auth as any).getSession();
 
-    if (sessionError) throw sessionError;
+      if (sessionError) throw sessionError;
 
-    if (session?.user) {
-      setIsLoggedIn(true);
-      
-      // Fetch the user's role from your profiles table
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", session.user.id)
-        .single();
+      if (session?.user) {
+        setIsLoggedIn(true);
+        
+        // Check for Admin Role specifically
+        const { data: roleData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", session.user.id)
+          .single();
 
-      if (!profileError && profile) {
-        setUserRole(profile.role);
+        if (roleData?.role === "admin") {
+          setUserRole("admin");
+        } else {
+          // Fallback to profile role (Landlord/Tenant)
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("role")
+            .eq("id", session.user.id)
+            .single();
+          
+          setUserRole(profile?.role || "tenant");
+        }
       } else {
-        setUserRole("tenant"); // Default fallback
+        setIsLoggedIn(false);
+        setUserRole(null);
       }
-    } else {
+    } catch (error) {
+      console.error("Auth error:", error);
       setIsLoggedIn(false);
-      setUserRole(null);
     }
-  } catch (error) {
-    console.error("Auth sync error:", error);
-    setIsLoggedIn(false);
-    setUserRole(null);
-  }
-};
+  };
 
   const getFeatured = async () => {
     let { data, error } = await supabase
@@ -101,17 +107,24 @@ const checkUser = async () => {
   };
 
   const handleBudgetOptimization = () => {
-    if (!tempBudget) return toast.error("Enter a budget first!");
+    if (!tempBudget) return toast.error("Enter a budget!");
     setShowBudgetModal(false);
     navigate(`/tenant?maxRent=${tempBudget}&optimize=true`);
   };
 
+  // --- UPDATED REDIRECT LOGIC ---
   const handleDashboardRedirect = () => {
     if (!isLoggedIn) {
       navigate("/auth");
+      return;
+    }
+
+    if (userRole === "admin") {
+      navigate("/admin-dashboard"); // Redirects to Admin Portal
+    } else if (userRole === "landlord") {
+      navigate("/landlord");
     } else {
-      if (userRole === "landlord") navigate("/landlord");
-      else navigate("/tenant");
+      navigate("/tenant");
     }
   };
 
@@ -203,9 +216,6 @@ const checkUser = async () => {
               FIND RENT <br />
               <span className="text-primary italic">RELAX.</span>
             </h1>
-            <p className="text-base text-white/60 font-medium max-w-md mx-auto leading-relaxed">
-              The high-performance platform for modern tenants and landlords.
-            </p>
           </motion.div>
 
           <motion.div className="flex flex-col sm:flex-row items-center justify-center gap-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
@@ -216,8 +226,8 @@ const checkUser = async () => {
             <button onClick={handleDashboardRedirect} className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 text-white text-[12px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all">
               {isLoggedIn ? (
                 <>
-                  <LayoutDashboard className="w-4 h-4" /> 
-                  {userRole === 'landlord' ? "Landlord Hub" : "Tenant Hub"}
+                  {userRole === 'admin' ? <Shield className="w-4 h-4 text-primary" /> : <LayoutDashboard className="w-4 h-4" />}
+                  {userRole === 'admin' ? "Admin Hub" : userRole === 'landlord' ? "Landlord Hub" : "Tenant Hub"}
                 </>
               ) : (
                 <>
@@ -257,26 +267,19 @@ const checkUser = async () => {
             <h2 className="text-3xl font-black tracking-tight uppercase">Featured Units</h2>
             <p className="text-[10px] text-primary font-bold uppercase tracking-[0.3em]">High-Performance Living</p>
           </div>
-          <button onClick={() => navigate("/tenant")} className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors border-b border-transparent hover:border-primary pb-1">
-            View All Marketplace
-          </button>
         </div>
 
         {loading ? (
           <div className="h-64 flex flex-col items-center justify-center gap-3">
              <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
-             <span className="text-[9px] font-bold uppercase tracking-[0.4em] text-muted-foreground">Syncing...</span>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {list.map((p, i) => (
               <motion.div key={p.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="group cursor-pointer space-y-4" onClick={() => navigate(`/property/${p.id}`)}>
                 <div className="relative aspect-[4/3] rounded-[2rem] overflow-hidden shadow-md group-hover:shadow-xl transition-all duration-500">
-                  <img src={p.image_url || "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=800"} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={p.title} />
+                  <img src={p.image_url || "/placeholder.svg"} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={p.title} />
                   <div className="absolute top-4 right-4 bg-background/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[11px] font-bold text-primary">₹{p.rent.toLocaleString()}</div>
-                  {p.has_vr && (
-                    <div className="absolute bottom-4 left-4 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-[9px] font-bold tracking-widest shadow-lg"><Maximize className="w-3 h-3" /> VR</div>
-                  )}
                 </div>
                 <div className="px-2 space-y-1">
                   <div className="flex justify-between items-center">
