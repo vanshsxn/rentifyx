@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Building2, Users, Shield, Search, Loader2, Trash2, Star, TrendingUp, Save, X, Globe, Zap, ArrowUpRight
+  Building2, Users, Shield, Search, Loader2, Trash2, Star, TrendingUp, BarChart3, Save, X
 } from "lucide-react";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
 
 interface PropertyRow {
   id: string;
@@ -15,7 +14,6 @@ interface PropertyRow {
   admin_rating: number | null;
   image_url: string | null;
   landlord_id: string;
-  is_featured?: boolean;
 }
 
 interface UserRow {
@@ -59,14 +57,19 @@ const AdminDashboard = () => {
 
   useEffect(() => { fetchData(); }, []);
 
+  // --- DELETE LOGIC ---
   const handleDeleteProperty = async (propertyId: string) => {
     const confirmDelete = window.confirm("Are you sure you want to delete this property permanently?");
     if (!confirmDelete) return;
 
-    const { error } = await supabase.from("properties").delete().eq("id", propertyId);
+    const { error } = await supabase
+      .from("properties")
+      .delete()
+      .eq("id", propertyId);
 
     if (error) {
-      toast.error("Delete failed: Check RLS policies");
+      toast.error("Delete failed: Check RLS policies or foreign keys");
+      console.error(error);
     } else {
       toast.success("Property removed from database");
       setProperties(prev => prev.filter(p => p.id !== propertyId));
@@ -80,23 +83,18 @@ const AdminDashboard = () => {
       return;
     }
     
-    const { error } = await supabase.from("properties").update({ admin_rating: val }).eq("id", propertyId);
+    const { error } = await supabase
+      .from("properties")
+      .update({ admin_rating: val })
+      .eq("id", propertyId);
 
     if (error) {
       toast.error("Failed to update rating");
     } else {
-      toast.success("Admin rating synchronized");
+      toast.success("Property rating boosted by Admin");
       setProperties(prev => prev.map(p => p.id === propertyId ? { ...p, admin_rating: val } : p));
       setEditingRating(null);
       setRatingValue("");
-    }
-  };
-
-  const toggleFeatured = async (id: string, current: boolean) => {
-    const { error } = await supabase.from("properties").update({ is_featured: !current }).eq("id", id);
-    if (!error) {
-      setProperties(prev => prev.map(p => p.id === id ? { ...p, is_featured: !current } : p));
-      toast.success(current ? "Removed from Featured" : "Promoted to Featured");
     }
   };
 
@@ -105,194 +103,155 @@ const AdminDashboard = () => {
     p.area.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const stats = [
-    { label: "Total Assets", value: properties.length, icon: Building2, color: "text-primary" },
-    { label: "Active Users", value: users.length, icon: Users, color: "text-blue-500" },
-    { label: "Market Volume", value: `₹${(properties.reduce((acc, curr) => acc + curr.rent, 0) / 100000).toFixed(1)}L`, icon: TrendingUp, color: "text-emerald-500" },
-  ];
-
   return (
-    <div className="p-6 md:p-12 space-y-10 bg-background min-h-screen font-sans selection:bg-primary selection:text-white">
-      
-      {/* HEADER SECTION */}
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
-        <div className="space-y-3">
-          <div className="flex items-center gap-3 text-primary">
-            <Shield className="w-6 h-6" />
-            <span className="text-[11px] font-black uppercase tracking-[0.4em]">Internal Operations</span>
-          </div>
-          <h1 className="text-5xl md:text-6xl font-black uppercase tracking-tighter italic leading-none">
-            Admin <span className="text-primary">Console.</span>
+    <div className="p-4 md:p-8 space-y-8 bg-background min-h-screen font-sans">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-1">
+          <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tighter italic flex items-center gap-3">
+            <Shield className="w-8 md:w-10 h-8 md:h-10 text-primary" />
+            Control Center
           </h1>
+          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em]">
+            Manage Landlord Assets & Ratings
+          </p>
         </div>
 
-        <div className="flex flex-col md:flex-row items-center gap-4">
-          <div className="relative group w-full md:w-80">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative group flex-1 md:flex-initial">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder={`Search ${tab}...`}
+              placeholder={`Filter ${tab}...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-12 pr-6 py-4 bg-secondary/50 border border-border/50 rounded-2xl text-[12px] font-bold uppercase w-full focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+              className="pl-11 pr-4 py-3 bg-secondary/50 border border-border rounded-2xl text-[11px] font-bold uppercase w-full md:w-64 focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
-          <div className="bg-secondary/80 backdrop-blur-md p-1.5 rounded-2xl flex border border-border/50 shadow-inner">
-            <button onClick={() => setTab("properties")} className={`px-8 py-3 rounded-xl text-[11px] font-black uppercase transition-all ${tab === "properties" ? "bg-background shadow-xl text-primary scale-105" : "opacity-40 hover:opacity-100"}`}>Assets</button>
-            <button onClick={() => setTab("users")} className={`px-8 py-3 rounded-xl text-[11px] font-black uppercase transition-all ${tab === "users" ? "bg-background shadow-xl text-primary scale-105" : "opacity-40 hover:opacity-100"}`}>Users</button>
+          <div className="bg-secondary p-1 rounded-2xl flex border border-border">
+            <button onClick={() => setTab("properties")} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${tab === "properties" ? "bg-background shadow-lg text-primary" : "opacity-40"}`}>Properties</button>
+            <button onClick={() => setTab("users")} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${tab === "users" ? "bg-background shadow-lg text-primary" : "opacity-40"}`}>Users</button>
           </div>
         </div>
       </div>
 
-      {/* STAT CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {stats.map((s, i) => (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-            key={s.label} className="bg-card border border-border/50 p-8 rounded-[2.5rem] shadow-xl space-y-4 hover:border-primary/30 transition-all group"
-          >
-            <div className={`w-12 h-12 rounded-2xl bg-secondary flex items-center justify-center ${s.color} group-hover:scale-110 transition-transform`}>
-              <s.icon className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{s.label}</p>
-              <h3 className="text-3xl font-black italic uppercase tracking-tighter">{s.value}</h3>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* MAIN DATA TABLE */}
-      <div className="bg-card border border-border/50 rounded-[3rem] overflow-hidden shadow-2xl relative">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-20" />
-        
+      <div className="bg-card border border-border rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl">
         {loading ? (
-          <div className="py-32 flex flex-col items-center gap-6">
-            <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-            <span className="text-[11px] font-black uppercase tracking-[0.5em] text-muted-foreground animate-pulse">Synchronizing Core...</span>
+          <div className="py-20 flex flex-col items-center gap-4">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Syncing Database...</span>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
-              <thead className="bg-secondary/20 border-b border-border/50">
-                <tr className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">
+              <thead className="bg-secondary/30 border-b border-border">
+                <tr className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                   {tab === "properties" ? (
                     <>
-                      <th className="px-10 py-7">Listing Detail</th>
-                      <th className="px-10 py-7">Admin Rating</th>
-                      <th className="px-10 py-7">User Score</th>
-                      <th className="px-10 py-7">Status</th>
-                      <th className="px-10 py-7 text-right">Operations</th>
+                      <th className="px-6 md:px-8 py-5">Landlord Property</th>
+                      <th className="px-6 md:px-8 py-5 text-amber-500">Admin Override</th>
+                      <th className="px-6 md:px-8 py-5">Tenant Rating</th>
+                      <th className="px-6 md:px-8 py-5">Final Displayed</th>
+                      <th className="px-6 md:px-8 py-5 text-right">Action</th>
                     </>
                   ) : (
                     <>
-                      <th className="px-10 py-7">Account Identity</th>
-                      <th className="px-10 py-7">Access Level</th>
-                      <th className="px-10 py-7">Onboarding Date</th>
-                      <th className="px-10 py-7 text-right">Control</th>
+                      <th className="px-6 md:px-8 py-5">User</th>
+                      <th className="px-6 md:px-8 py-5">Role</th>
+                      <th className="px-6 md:px-8 py-5">Joined</th>
                     </>
                   )}
                 </tr>
               </thead>
-              <tbody className="text-[12px] font-bold uppercase">
+              <tbody className="text-[11px] font-bold uppercase">
                 {tab === "properties" ? (
-                  filteredProperties.map((p, i) => (
-                    <motion.tr 
-                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.05 }}
-                      key={p.id} className="border-b border-border/30 hover:bg-primary/[0.02] transition-colors group"
-                    >
-                      <td className="px-10 py-6">
-                        <div className="flex items-center gap-5">
-                          <div className="relative">
-                            <img src={p.image_url || "/placeholder.svg"} className="w-14 h-14 rounded-2xl object-cover grayscale group-hover:grayscale-0 transition-all duration-500 shadow-lg" />
-                            {p.is_featured && <div className="absolute -top-2 -right-2 bg-primary p-1 rounded-lg shadow-lg"><Zap className="w-3 h-3 text-white fill-white" /></div>}
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-[14px] font-black tracking-tight group-hover:text-primary transition-colors">{p.title}</p>
-                            <p className="text-[9px] text-muted-foreground tracking-widest flex items-center gap-1.5"><Globe className="w-3 h-3" /> {p.area}</p>
-                          </div>
-                        </div>
-                      </td>
+                  filteredProperties.map(p => {
+                    const finalRating = p.admin_rating
+                      ? ((p.admin_rating + (p.rating || 0)) / 2).toFixed(1)
+                      : (p.rating || 0).toFixed(1);
 
-                      <td className="px-10 py-6">
-                        {editingRating === p.id ? (
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="number" step="0.1" min="1" max="5"
-                              value={ratingValue}
-                              onChange={(e) => setRatingValue(e.target.value)}
-                              className="w-16 px-3 py-2 bg-background border-2 border-primary rounded-xl text-center font-black"
-                              autoFocus
-                            />
-                            <button onClick={() => handleSetAdminRating(p.id)} className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20 hover:scale-110 transition-transform">
-                              <Save className="w-4 h-4" />
+                    return (
+                      <tr key={p.id} className="border-b border-border/50 hover:bg-secondary/10 transition-colors">
+                        <td className="px-6 md:px-8 py-4">
+                          <div className="flex items-center gap-4">
+                            <img src={p.image_url || "/placeholder.svg"} className="w-10 h-10 rounded-xl object-cover" />
+                            <div>
+                              <p className="tracking-tight">{p.title}</p>
+                              <p className="text-[8px] opacity-40 lowercase font-medium">{p.area}</p>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="px-6 md:px-8 py-4">
+                          {editingRating === p.id ? (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number" step="0.1" min="1" max="5"
+                                value={ratingValue}
+                                onChange={(e) => setRatingValue(e.target.value)}
+                                className="w-14 px-2 py-1 bg-background border border-primary rounded-lg text-center text-[10px] font-black"
+                                autoFocus
+                              />
+                              <button onClick={() => handleSetAdminRating(p.id)} className="p-1.5 bg-primary text-white rounded-lg hover:scale-105 transition-transform">
+                                <Save className="w-3 h-3" />
+                              </button>
+                              <button onClick={() => setEditingRating(null)} className="p-1.5 bg-secondary rounded-lg">
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => { setEditingRating(p.id); setRatingValue(p.admin_rating?.toString() || ""); }}
+                              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 hover:bg-amber-500/20 transition-all"
+                            >
+                              <Star className="w-3 h-3 fill-amber-500" />
+                              <span className="font-black text-[10px]">{p.admin_rating?.toFixed(1) || "SET"}</span>
                             </button>
-                            <button onClick={() => setEditingRating(null)} className="p-2 bg-secondary rounded-xl"><X className="w-4 h-4" /></button>
+                          )}
+                        </td>
+
+                        <td className="px-6 md:px-8 py-4 opacity-50">
+                          <div className="flex items-center gap-1">
+                            <Users className="w-3 h-3" />
+                            {p.rating?.toFixed(1) || "0.0"}
                           </div>
-                        ) : (
-                          <button
-                            onClick={() => { setEditingRating(p.id); setRatingValue(p.admin_rating?.toString() || ""); }}
-                            className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-amber-600 hover:bg-amber-500/20 transition-all font-black text-[11px]"
+                        </td>
+
+                        <td className="px-6 md:px-8 py-4">
+                          <div className="flex items-center gap-1.5 text-green-600 bg-green-500/10 px-3 py-1.5 rounded-xl border border-green-500/20 w-fit">
+                            <Star className="w-3 h-3 fill-green-600" />
+                            <span className="font-black text-[10px]">{finalRating}</span>
+                          </div>
+                        </td>
+
+                        <td className="px-6 md:px-8 py-4 text-right">
+                          <button 
+                            onClick={() => handleDeleteProperty(p.id)}
+                            className="p-2 text-destructive hover:bg-destructive/10 rounded-xl transition-all"
                           >
-                            <Star className={`w-3.5 h-3.5 ${p.admin_rating ? 'fill-amber-500' : ''}`} />
-                            {p.admin_rating?.toFixed(1) || "BOOST"}
+                            <Trash2 className="w-4 h-4" />
                           </button>
-                        )}
-                      </td>
-
-                      <td className="px-10 py-6 opacity-40">
-                        <div className="flex items-center gap-2">
-                          <Users className="w-3.5 h-3.5" />
-                          {p.rating?.toFixed(1) || "0.0"}
-                        </div>
-                      </td>
-
-                      <td className="px-10 py-6">
-                         <button 
-                           onClick={() => toggleFeatured(p.id, p.is_featured || false)}
-                           className={`px-4 py-1.5 rounded-full text-[9px] font-black tracking-widest border transition-all ${p.is_featured ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-secondary border-border text-muted-foreground hover:border-primary/50'}`}
-                         >
-                           {p.is_featured ? "FEATURED" : "STANDARD"}
-                         </button>
-                      </td>
-
-                      <td className="px-10 py-6 text-right">
-                        <div className="flex items-center justify-end gap-3">
-                           <button className="p-2.5 bg-secondary text-muted-foreground hover:text-primary rounded-xl transition-all"><ArrowUpRight className="w-4 h-4" /></button>
-                           <button 
-                             onClick={() => handleDeleteProperty(p.id)}
-                             className="p-2.5 text-destructive hover:bg-destructive/10 rounded-xl transition-all"
-                           >
-                             <Trash2 className="w-4 h-4" />
-                           </button>
-                        </div>
-                      </td>
-                    </motion.tr>
-                  ))
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
-                  users.map((u, i) => (
-                    <motion.tr 
-                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.05 }}
-                      key={u.id} className="border-b border-border/30 hover:bg-secondary/20 transition-colors"
-                    >
-                      <td className="px-10 py-6">
-                        <div className="flex flex-col gap-1">
-                          <span className="text-[14px] font-black tracking-tight uppercase italic">{u.full_name || "New Recruit"}</span>
-                          <span className="text-[9px] opacity-40 lowercase font-medium tracking-widest">{u.email}</span>
+                  users.map(u => (
+                    <tr key={u.id} className="border-b border-border/50 hover:bg-secondary/10 transition-colors">
+                      <td className="px-6 md:px-8 py-4">
+                        <div className="flex flex-col">
+                          <span>{u.full_name || "No Name"}</span>
+                          <span className="text-[8px] opacity-40 lowercase">{u.email}</span>
                         </div>
                       </td>
-                      <td className="px-10 py-6">
-                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black tracking-[0.2em] ${userRoles[u.id] === 'admin' ? 'bg-primary text-white' : 'bg-secondary text-muted-foreground border border-border'}`}>
-                          {userRoles[u.id] || "TENANT"}
+                      <td className="px-6 md:px-8 py-4">
+                        <span className={`px-2 py-1 rounded-md text-[9px] ${userRoles[u.id] === 'admin' ? 'bg-primary/20 text-primary' : 'bg-secondary text-muted-foreground'}`}>
+                          {userRoles[u.id] || "tenant"}
                         </span>
                       </td>
-                      <td className="px-10 py-6 opacity-40 font-medium text-[10px] tracking-widest">
-                        {new Date(u.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      <td className="px-6 md:px-8 py-4 opacity-40">
+                        {new Date(u.created_at).toLocaleDateString()}
                       </td>
-                      <td className="px-10 py-6 text-right">
-                        <button className="text-[10px] font-black text-primary hover:underline underline-offset-4 tracking-widest">EDIT PERMISSIONS</button>
-                      </td>
-                    </motion.tr>
+                    </tr>
                   ))
                 )}
               </tbody>
