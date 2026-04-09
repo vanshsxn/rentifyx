@@ -1,36 +1,8 @@
-import { useParams, useNavigate, Link } from "react-router-dom";
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
-import {
-  ArrowLeft, Star, MapPin, Bed, Bath, Maximize,
-  Phone, MessageCircle, CalendarDays, Share2,
-  Heart, Sparkles, Building2, Loader2, X, ArrowRight, CheckCircle2
-} from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { toast } from "sonner";
-
-// --- Recommendations ---
-const RecommendedSection = ({ currentProperty }: { currentProperty: any }) => {
-  const [recommendations, setRecommendations] = useState<any[]>([]);
-
-  useEffect(() => {
-    const fetchRecs = async () => {
-      const { data } = await supabase
-        .from("properties")
-        .select("*")
-        .neq("id", currentProperty.id)
-        .limit(4);
-      if (data) setRecommendations(data.filter(d =>
-        d.area === currentProperty.area ||
-        (d.rent >= currentProperty.rent - 5000 && d.rent <= currentProperty.rent + 5000)
-      ).slice(0, 4));
-    };
-    fetchRecs();
-  }, [currentProperty]);
-
+import { useParams, useNavigate, Link } from "react-router-dom";import { useState, useEffect } from "react";import { supabase } from "@/integrations/supabase/client";import { useAuth } from "@/contexts/AuthContext";import {ArrowLeft, Star, MapPin, Bed, Bath, Maximize,Phone, MessageCircle, CalendarDays, Share2,Heart, Sparkles, Building2, Loader2, X, ArrowRight, CheckCircle2} from "lucide-react";import { motion, AnimatePresence } from "framer-motion";import { toast } from "sonner";
+const RecommendedSection = ({ currentProperty }: { currentProperty: any }) => {const [recommendations, setRecommendations] = useState<any[]>([]);
+  useEffect(() => {const fetchRecs = async () => {const { data } = await supabase.from("properties").select("*").neq("id", currentProperty.id).limit(4);
+      if (data) setRecommendations(data.filter(d =>d.area === currentProperty.area ||(d.rent >= currentProperty.rent - 5000 && d.rent <= currentProperty.rent + 5000)).slice(0, 4));};fetchRecs();}, [currentProperty]);
   if (recommendations.length === 0) return null;
-
   return (
     <section className="mt-20 space-y-6">
       <div className="flex items-center justify-between">
@@ -61,64 +33,11 @@ const RecommendedSection = ({ currentProperty }: { currentProperty: any }) => {
           </Link>
         ))}
       </div>
-    </section>
-  );
-};
-
-// --- Rating Section with Dual-Layer Display ---
-const RatingSection = ({ propertyId, adminRating }: { propertyId: string; adminRating: number | null }) => {
-  const { user } = useAuth();
-  const [userRating, setUserRating] = useState(0);
-  const [hover, setHover] = useState(0);
-  const [comment, setComment] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [avgTenantRating, setAvgTenantRating] = useState<number | null>(null);
-  const [totalReviews, setTotalReviews] = useState(0);
-
-  useEffect(() => {
-    const fetchRatings = async () => {
-      const { data } = await supabase
-        .from("property_ratings")
-        .select("rating")
-        .eq("property_id", propertyId);
-      if (data && data.length > 0) {
-        const avg = data.reduce((s, r) => s + Number(r.rating), 0) / data.length;
-        setAvgTenantRating(avg);
-        setTotalReviews(data.length);
-      }
-    };
-    fetchRatings();
-  }, [propertyId]);
-
-  const submitRating = async () => {
-    if (!user) return toast.error("Sign in to leave a review");
-    if (userRating === 0) return toast.error("Please select a star rating");
-    setIsSubmitting(true);
-    const { error } = await supabase.from("property_ratings").upsert({
-      property_id: propertyId,
-      user_id: user.id,
-      rating: userRating,
-      comment: comment,
-    });
-    if (error) toast.error("Rating failed: " + error.message);
-    else {
-      toast.success("Feedback submitted!");
-      setComment("");
-      const { data } = await supabase.from("property_ratings").select("rating").eq("property_id", propertyId);
-      if (data && data.length > 0) {
-        setAvgTenantRating(data.reduce((s, r) => s + Number(r.rating), 0) / data.length);
-        setTotalReviews(data.length);
-      }
-    }
-    setIsSubmitting(false);
-  };
-
-  const displayedRating = adminRating && avgTenantRating
-    ? ((adminRating + avgTenantRating) / 2).toFixed(1)
-    : avgTenantRating ? avgTenantRating.toFixed(1)
-    : adminRating ? adminRating.toFixed(1)
-    : "—";
-
+    </section>);};
+const RatingSection = ({ propertyId, adminRating }: { propertyId: string; adminRating: number | null }) => {const { user } = useAuth();const [userRating, setUserRating] = useState(0);const [hover, setHover] = useState(0);const [comment, setComment] = useState("");const [isSubmitting, setIsSubmitting] = useState(false);const [avgTenantRating, setAvgTenantRating] = useState<number | null>(null);const [totalReviews, setTotalReviews] = useState(0);useEffect(() => {const fetchRatings = async () => {const { data } = await supabase.from("property_ratings").select("rating").eq("property_id", propertyId);if (data && data.length > 0) {const avg = data.reduce((s, r) => s + Number(r.rating), 0) / data.length;setAvgTenantRating(avg);setTotalReviews(data.length);}};fetchRatings();}, [propertyId]);
+  const submitRating = async () => {if (!user) return toast.error("Sign in to leave a review");if (userRating === 0) return toast.error("Please select a star rating");setIsSubmitting(true);const { error } = await supabase.from("property_ratings").upsert({property_id: propertyId,user_id: user.id,rating: userRating,comment: comment,});
+    if (error) toast.error("Rating failed: " + error.message);else {toast.success("Feedback submitted!");setComment("");const { data } = await supabase.from("property_ratings").select("rating").eq("property_id", propertyId);if (data && data.length > 0) {setAvgTenantRating(data.reduce((s, r) => s + Number(r.rating), 0) / data.length);setTotalReviews(data.length);}}setIsSubmitting(false);};
+  const displayedRating = adminRating && avgTenantRating? ((adminRating + avgTenantRating) / 2).toFixed(1): avgTenantRating ? avgTenantRating.toFixed(1): adminRating ? adminRating.toFixed(1): "—";
   return (
     <div className="mt-10 space-y-4">
       <div className="p-4 bg-secondary/50 rounded-2xl flex items-center justify-between">
@@ -137,7 +56,6 @@ const RatingSection = ({ propertyId, adminRating }: { propertyId: string; adminR
           </div>
         )}
       </div>
-
       <div className="p-6 bg-card border border-border rounded-[2rem] shadow-sm">
         <h3 className="text-sm font-black uppercase tracking-widest mb-4 flex items-center gap-2">
           <Star className="w-4 h-4 text-primary" /> Rate this Property
@@ -159,82 +77,14 @@ const RatingSection = ({ propertyId, adminRating }: { propertyId: string; adminR
           {isSubmitting ? "Submitting..." : "Submit Review"}
         </button>
       </div>
-    </div>
-  );
-};
-
-const PropertyDetail = () => {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const [p, setP] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [activeImg, setActiveImg] = useState(0);
-  const [showVR, setShowVR] = useState(false);
-  const [hasRequested, setHasRequested] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [requestLoading, setRequestLoading] = useState(false);
-
-  useEffect(() => {
-    const getData = async () => {
-      if (!id) return;
-      const { data } = await supabase.from("properties").select("*").eq("id", id).single();
-      if (data) {
-        setP(data);
-        if (user) {
-          const [{ data: existingReq }, { data: fav }] = await Promise.all([
-            supabase.from("tenant_requests").select("id").eq("property_id", id).eq("tenant_id", user.id).maybeSingle(),
-            supabase.from("favorites").select("id").eq("property_id", id).eq("user_id", user.id).maybeSingle(),
-          ]);
-          if (existingReq) setHasRequested(true);
-          if (fav) setIsFavorite(true);
-        }
-      }
-      setLoading(false);
-      window.scrollTo(0, 0);
-    };
-    getData();
-  }, [id, user]);
-
-  const toggleWishlist = async () => {
-    if (!user) return toast.error("Please login to save favorites");
-    if (isFavorite) {
-      await supabase.from("favorites").delete().eq("property_id", id).eq("user_id", user.id);
-      setIsFavorite(false);
-      toast.success("Removed from Wishlist");
-    } else {
-      await supabase.from("favorites").insert({ property_id: id!, user_id: user.id });
-      setIsFavorite(true);
-      toast.success("Added to Wishlist");
-    }
-  };
-
-  const handleChatRequest = async () => {
-    if (!user) return toast.error("Please sign in to contact the landlord");
-    if (hasRequested) return toast.info("Request already pending");
-
-    setRequestLoading(true);
-    const { error } = await supabase.from("tenant_requests").insert({
-      property_id: id!,
-      tenant_id: user.id,
-      message: `Hi, I am interested in ${p.title}. Let's chat!`,
-      status: "pending",
-      urgent: false,
-    });
-
-    if (error) toast.error("Failed to send request");
-    else {
-      setHasRequested(true);
-      toast.success("Request sent to Landlord!");
-    }
-    setRequestLoading(false);
-  };
-
-  if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
-  if (!p) return <div className="h-screen flex items-center justify-center font-black uppercase">Unit Not Found</div>;
-
-  const displayImages = p.images && p.images.length > 0 ? p.images : [p.image_url || "/placeholder.svg"];
-
+    </div>);};
+const PropertyDetail = () => {const { id } = useParams<{ id: string }>();const navigate = useNavigate();const { user } = useAuth();const [p, setP] = useState<any>(null);const [loading, setLoading] = useState(true);const [activeImg, setActiveImg] = useState(0);const [showVR, setShowVR] = useState(false);const [hasRequested, setHasRequested] = useState(false);const [isFavorite, setIsFavorite] = useState(false);const [requestLoading, setRequestLoading] = useState(false);useEffect(() => {const getData = async () => {if (!id) return;
+      const { data } = await supabase.from("properties").select("*").eq("id", id).single();if (data) {setP(data);if (user) {const [{ data: existingReq }, { data: fav }] = await Promise.all([supabase.from("tenant_requests").select("id").eq("property_id", id).eq("tenant_id", user.id).maybeSingle(),supabase.from("favorites").select("id").eq("property_id", id).eq("user_id", user.id).maybeSingle(),]);if (existingReq) setHasRequested(true);if (fav) setIsFavorite(true);}}setLoading(false);window.scrollTo(0, 0);};getData();}, [id, user]);
+  const toggleWishlist = async () => {if (!user) return toast.error("Please login to save favorites");if (isFavorite) {await supabase.from("favorites").delete().eq("property_id", id).eq("user_id", user.id);setIsFavorite(false);toast.success("Removed from Wishlist");} else {await supabase.from("favorites").insert({ property_id: id!, user_id: user.id });setIsFavorite(true);toast.success("Added to Wishlist");}};
+  const handleChatRequest = async () => {if (!user) return toast.error("Please sign in to contact the landlord");if (hasRequested) return toast.info("Request already pending");setRequestLoading(true);
+    const { error } = await supabase.from("tenant_requests").insert({property_id: id!,tenant_id: user.id,message: `Hi, I am interested in ${p.title}. Let's chat!`,status: "pending",urgent: false,});
+    if (error) toast.error("Failed to send request");else {setHasRequested(true);toast.success("Request sent to Landlord!");}setRequestLoading(false);};
+  if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;if (!p) return <div className="h-screen flex items-center justify-center font-black uppercase">Unit Not Found</div>; const displayImages = p.images && p.images.length > 0 ? p.images : [p.image_url || "/placeholder.svg"];
   return (
     <div className="min-h-screen bg-background pb-20">
       <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-border/50 px-4 md:px-6 py-4 flex items-center justify-between">
@@ -250,7 +100,6 @@ const PropertyDetail = () => {
           <button onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success("Link copied"); }}><Share2 className="w-5 h-5" /></button>
         </div>
       </header>
-
       <main className="max-w-[1400px] mx-auto px-4 md:px-6 py-10">
         <div className="grid grid-cols-1 md:grid-cols-[80px,1fr,400px] gap-6 md:gap-8 items-start mb-20">
 
@@ -389,8 +238,4 @@ const PropertyDetail = () => {
 
         <RecommendedSection currentProperty={p} />
       </main>
-    </div>
-  );
-};
-
-export default PropertyDetail;
+    </div>);};export default PropertyDetail;
