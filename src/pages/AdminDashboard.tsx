@@ -1,118 +1,29 @@
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import {
-  Building2, Users, Shield, Search, Loader2, Trash2, Star, Save, X, Mail, Calendar
-} from "lucide-react";
-import { toast } from "sonner";
-
-interface PropertyRow {
-  id: string;
-  title: string;
-  area: string;
-  rent: number;
-  rating: number;
-  admin_rating: number | null;
-  image_url: string | null;
-  landlord_id: string;
-}
-
-interface UserRow {
-  id: string;
-  full_name: string | null;
-  email: string | null;
-  created_at: string;
-}
-
-const AdminDashboard = () => {
-  const [properties, setProperties] = useState<PropertyRow[]>([]);
-  const [users, setUsers] = useState<UserRow[]>([]);
-  const [userRoles, setUserRoles] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
-  const [isDeleting, setIsDeleting] = useState<string | null>(null);
-  const [tab, setTab] = useState<"properties" | "users">("properties");
-  const [searchQuery, setSearchQuery] = useState("");
-  
-  const [editingRating, setEditingRating] = useState<string | null>(null);
-  const [ratingValue, setRatingValue] = useState("");
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [{ data: props }, { data: profiles }, { data: roles }] = await Promise.all([
-        supabase.from("properties").select("*").order("created_at", { ascending: false }),
-        supabase.from("profiles").select("*").order("created_at", { ascending: false }),
-        supabase.from("user_roles").select("user_id, role"),
-      ]);
-      setProperties((props as PropertyRow[]) || []);
-      setUsers((profiles as UserRow[]) || []);
-
-      const roleMap: Record<string, string> = {};
-      (roles || []).forEach((r: any) => { roleMap[r.user_id] = r.role; });
-      setUserRoles(roleMap);
-    } catch (err) {
-      toast.error("Database sync failed");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { fetchData(); }, []);
-
-  const handleDeleteProperty = async (propertyId: string) => {
-    if (!confirm("Delete this property?")) return;
-    setIsDeleting(propertyId);
-    try {
-      const { error } = await supabase.from("properties").delete().eq("id", propertyId);
-      if (error) throw error;
-      toast.success("Property deleted");
-      setProperties(prev => prev.filter(p => p.id !== propertyId));
-    } catch (err: any) {
-      toast.error(err.message);
-    } finally {
-      setIsDeleting(null);
-    }
-  };
-
-  const handleDeleteUser = async (userId: string) => {
-    if (!confirm("Delete this user? This may affect their listings.")) return;
-    setIsDeleting(userId);
-    try {
-      const { error } = await supabase.from("profiles").delete().eq("id", userId);
-      if (error) throw error;
-      toast.success("User removed");
-      setUsers(prev => prev.filter(u => u.id !== userId));
-    } catch (err: any) {
-      toast.error(err.message);
-    } finally {
-      setIsDeleting(null);
-    }
-  };
-
-  const handleSetAdminRating = async (propertyId: string) => {
-    const val = parseFloat(ratingValue);
-    if (isNaN(val) || val < 1 || val > 5) {
-      toast.error("Rating must be 1-5");
-      return;
-    }
+import { useEffect, useState } from "react";import { supabase } from "@/integrations/supabase/client";import { Building2, Users, Shield, Search, Loader2, Trash2, Star, Save, X, Mail, Calendar}from "lucide-react";import { toast } from "sonner";
+interface PropertyRow {id: string;title: string;area: string;rent: number;rating: number;admin_rating: number | null;image_url: string | null;landlord_id: string;}
+interface UserRow {id: string;full_name: string | null;email: string | null;created_at: string;}
+const AdminDashboard = () => {const [properties, setProperties] = useState<PropertyRow[]>([]);const [users, setUsers] = useState<UserRow[]>([]);const [userRoles, setUserRoles] = useState<Record<string, string>>({});const [loading, setLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);const [tab, setTab] = useState<"properties" | "users">("properties");const [searchQuery, setSearchQuery] = useState("");
+  const [editingRating, setEditingRating] = useState<string | null>(null);const [ratingValue, setRatingValue] = useState("");
+  const fetchData = async () => {setLoading(true);
+    try {const [{ data: props }, { data: profiles }, { data: roles }] = await Promise.all([supabase.from("properties").select("*").order("created_at", { ascending: false }),supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+        supabase.from("user_roles").select("user_id, role"),]);setProperties((props as PropertyRow[]) || []);setUsers((profiles as UserRow[]) || []);
+      const roleMap: Record<string, string> = {};(roles || []).forEach((r: any) => { roleMap[r.user_id] = r.role; });setUserRoles(roleMap);} catch (err) {toast.error("Database sync failed");} finally {setLoading(false);}};useEffect(() => { fetchData(); }, []);
+  const handleDeleteProperty = async (propertyId: string) => {if (!confirm("Delete this property?")) return;    setIsDeleting(propertyId);
+    try {const { error } = await supabase.from("properties").delete().eq("id", propertyId); if (error) throw error;
+      toast.success("Property deleted");setProperties(prev => prev.filter(p => p.id !== propertyId));} catch (err: any) {toast.error(err.message);} finally {
+      setIsDeleting(null);}};
+  const handleDeleteUser = async (userId: string) => {if (!confirm("Delete this user? This may affect their listings.")) return;setIsDeleting(userId);
+    try {const { error } = await supabase.from("profiles").delete().eq("id", userId);if (error) throw error;toast.success("User removed");setUsers(prev => prev.filter(u => u.id !== userId));} catch (err: any) {toast.error(err.message);
+    } finally {setIsDeleting(null); }};
+  const handleSetAdminRating = async (propertyId: string) => {const val = parseFloat(ratingValue);if (isNaN(val) || val < 1 || val > 5) {toast.error("Rating must be 1-5");
+      return;}
     const { error } = await supabase.from("properties").update({ admin_rating: val }).eq("id", propertyId);
     if (error) toast.error("Failed to update");
-    else {
-      toast.success("Rating updated");
-      setProperties(prev => prev.map(p => p.id === propertyId ? { ...p, admin_rating: val } : p));
-      setEditingRating(null);
-    }
-  };
-
+    else {toast.success("Rating updated");setProperties(prev => prev.map(p => p.id === propertyId ? { ...p, admin_rating: val } : p));setEditingRating(null); }  };
   const filteredProperties = properties.filter(p =>
-    p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.area.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
+    p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||p.area.toLowerCase().includes(searchQuery.toLowerCase()));
   const filteredUsers = users.filter(u =>
-    (u.full_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (u.email || "").toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
+    (u.full_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||(u.email || "").toLowerCase().includes(searchQuery.toLowerCase())  );
   return (
     <div className="p-4 md:p-8 space-y-8 bg-background min-h-screen font-sans">
       {/* HEADER */}
@@ -246,7 +157,4 @@ const AdminDashboard = () => {
         )}
       </div>
     </div>
-  );
-};
-
-export default AdminDashboard;
+  );};export default AdminDashboard;
