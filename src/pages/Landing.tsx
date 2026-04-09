@@ -64,17 +64,10 @@ const Landing = () => {
           .eq("user_id", session.user.id)
           .single();
 
-        if (roleData?.role === "admin") {
-          setUserRole("admin");
+        if (roleData?.role) {
+          setUserRole(roleData.role);
         } else {
-          // Fallback to profile role (Landlord/Tenant)
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("role")
-            .eq("id", session.user.id)
-            .single();
-          
-          setUserRole(profile?.role || "tenant");
+          setUserRole("tenant");
         }
       } else {
         setIsLoggedIn(false);
