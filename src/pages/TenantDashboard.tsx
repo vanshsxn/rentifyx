@@ -1,138 +1,27 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { 
-  Search, MapPin, Star, Heart, Wifi, Car, Droplets, Shield, Wind, Zap, 
-  Dumbbell, SlidersHorizontal, ArrowLeftRight, X, 
-  Loader2, User, Settings, LogOut, ChevronDown, Camera, Edit3, Sparkles,
-  ZapIcon
-} from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useSearchParams, useNavigate } from "react-router-dom";
-import { toast } from "sonner";
-
-const TenantDashboard = () => {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const [properties, setProperties] = useState<any[]>([]);
-  const [bestMatch, setBestMatch] = useState<any>(null);
-  const [otherProperties, setOtherProperties] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  
-  const [userProfile, setUserProfile] = useState<any>(null);
-  const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [editName, setEditName] = useState("");
-  const [editAvatar, setEditAvatar] = useState("");
-
-  const isOptimized = searchParams.get("optimize") === "true";
-  const hasMaxRent = searchParams.get("maxRent");
-
-  const getPageTitle = () => {
-    if (isOptimized || hasMaxRent) return "Smart Budget Analyzer";
-    if (userProfile?.role === 'landlord') return "Landlord Hub";
-    return "Marketplace";
-  };
-
-  useEffect(() => {
-    fetchInitialData();
-  }, []);
-
-  const fetchInitialData = async () => {
-    setLoading(true);
-    const { data: { user } } = await (supabase.auth as any).getUser();
-    
-    if (user) {
-      const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-      if (profile) {
-        setUserProfile(profile);
-        setEditName(profile.full_name || "");
-        setEditAvatar(profile.avatar_url || "");
-      }
-    }
-
-    const { data: props, error } = await supabase
-      .from("properties")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (!error && props) setProperties(props);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    if (!properties.length) return;
-
-    let pool = [...properties];
-
-    // Filter by tags first if any
-    if (selectedTags.length > 0) {
-      pool = pool.filter(p => {
-        const combined = [...(p.features || []), ...(p.tags || [])];
-        return selectedTags.every(tag => combined.includes(tag));
-      });
-    }
-
-    const maxRentParam = searchParams.get("maxRent");
-    const numericQuery = !isNaN(Number(searchQuery)) && searchQuery !== "" ? Number(searchQuery) : null;
-    const budgetLimit = numericQuery || (maxRentParam ? Number(maxRentParam) : null);
-
-    if (budgetLimit) {
-      // 1. Find Exact Price Matches
-      const exactMatches = pool.filter(p => Number(p.rent) === budgetLimit);
-      
+import { useState, useEffect } from "react";import { supabase } from "@/integrations/supabase/client";import {Search, MapPin, Star, Heart, Wifi, Car, Droplets, Shield, Wind, Zap,Dumbbell, SlidersHorizontal, ArrowLeftRight, X,Loader2, User, Settings, LogOut, ChevronDown, Camera, Edit3, Sparkles,ZapIcon} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";import { useSearchParams, useNavigate } from "react-router-dom";import { toast } from "sonner";const TenantDashboard = () => {
+  const [searchParams] = useSearchParams();const navigate = useNavigate();const [properties, setProperties] = useState<any[]>([]);const [bestMatch, setBestMatch] = useState<any>(null);const [otherProperties, setOtherProperties] = useState<any[]>([]);const [loading, setLoading] = useState(true);const [searchQuery, setSearchQuery] = useState("");const [selectedTags, setSelectedTags] = useState<string[]>([]);const [showUserMenu, setShowUserMenu] = useState(false);const [userProfile, setUserProfile] = useState<any>(null);const [isEditingProfile, setIsEditingProfile] = useState(false);const [editName, setEditName] = useState("");const [editAvatar, setEditAvatar] = useState("");const isOptimized = searchParams.get("optimize") === "true";const hasMaxRent = searchParams.get("maxRent");
+  const getPageTitle = () => {if (isOptimized || hasMaxRent) return "Smart Budget Analyzer";if (userProfile?.role === 'landlord') return "Landlord Hub";return "Marketplace";};
+  useEffect(() => {fetchInitialData();}, []);
+  const fetchInitialData = async () => {setLoading(true);const { data: { user } } = await (supabase.auth as any).getUser();
+    if (user) {const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();if (profile) {setUserProfile(profile);setEditName(profile.full_name || "");setEditAvatar(profile.avatar_url || "");}}
+    const { data: props, error } = await supabase.from("properties").select("*").order("created_at", { ascending: false });
+    if (!error && props) setProperties(props);setLoading(false);};
+  useEffect(() => {if (!properties.length) return;let pool = [...properties];
+    if (selectedTags.length > 0) {pool = pool.filter(p => {const combined = [...(p.features || []), ...(p.tags || [])];return selectedTags.every(tag => combined.includes(tag));});}
+    const maxRentParam = searchParams.get("maxRent");const numericQuery = !isNaN(Number(searchQuery)) && searchQuery !== "" ? Number(searchQuery) : null;const budgetLimit = numericQuery || (maxRentParam ? Number(maxRentParam) : null);
+    if (budgetLimit) {// 1. Find Exact Price Matches 
+     const exactMatches = pool.filter(p => Number(p.rent) === budgetLimit);
       // 2. Find All Under Budget
       const underBudget = pool.filter(p => Number(p.rent) < budgetLimit);
-
       // Sort both by feature count (descending)
-      const sortByFeatures = (arr: any[]) => arr.sort((a, b) => {
-        const aCount = [...(a.features || []), ...(a.tags || [])].length;
-        const bCount = [...(b.features || []), ...(b.tags || [])].length;
-        return bCount - aCount;
-      });
-
-      const sortedExact = sortByFeatures([...exactMatches]);
-      const sortedUnder = sortByFeatures([...underBudget]);
-
-      if (sortedExact.length > 0) {
-        setBestMatch(sortedExact[0]);
-        setOtherProperties([...sortedExact.slice(1), ...sortedUnder]);
-      } else if (sortedUnder.length > 0) {
-        setBestMatch(sortedUnder[0]);
-        setOtherProperties(sortedUnder.slice(1));
-      } else {
-        setBestMatch(null);
-        setOtherProperties([]);
-      }
-    } else {
-      // Standard search logic if no budget limit is active
-      const query = searchQuery.toLowerCase();
-      const filtered = pool.filter(p => 
-        p.title?.toLowerCase().includes(query) || p.area?.toLowerCase().includes(query)
-      );
-      setBestMatch(null);
-      setOtherProperties(filtered);
-    }
-  }, [searchQuery, selectedTags, properties, searchParams]);
-
-  const handleLogout = async () => {
-    await (supabase.auth as any).signOut();
-    navigate("/auth");
-  };
-
-  const handleSaveProfile = async () => {
-    const { error } = await supabase.from("profiles").update({ full_name: editName, avatar_url: editAvatar }).eq("id", userProfile.id);
-    if (!error) {
-      setUserProfile({ ...userProfile, full_name: editName, avatar_url: editAvatar });
-      setIsEditingProfile(false);
-      toast.success("Profile Updated");
-    }
-  };
-
-  const PropertyCard = ({ p, isHero = false }: { p: any, isHero?: boolean }) => {
-    const amenitiesCount = Array.from(new Set([...(p.features || []), ...(p.tags || [])])).length;
-    return (
+      const sortByFeatures = (arr: any[]) => arr.sort((a, b) => {const aCount = [...(a.features || []), ...(a.tags || [])].length;const bCount = [...(b.features || []), ...(b.tags || [])].length;return bCount - aCount;});
+      const sortedExact = sortByFeatures([...exactMatches]);const sortedUnder = sortByFeatures([...underBudget]);
+      if (sortedExact.length > 0) {setBestMatch(sortedExact[0]);setOtherProperties([...sortedExact.slice(1), ...sortedUnder]);} else if (sortedUnder.length > 0) {setBestMatch(sortedUnder[0]);setOtherProperties(sortedUnder.slice(1));} else {setBestMatch(null);setOtherProperties([]);}} else {// Standard search logic if no budget limit is active
+      const query = searchQuery.toLowerCase();const filtered = pool.filter(p => p.title?.toLowerCase().includes(query) || p.area?.toLowerCase().includes(query));setBestMatch(null);setOtherProperties(filtered);}}, [searchQuery, selectedTags, properties, searchParams]);
+  const handleLogout = async () => {await (supabase.auth as any).signOut();navigate("/auth");};
+  const handleSaveProfile = async () => {const { error } = await supabase.from("profiles").update({ full_name: editName, avatar_url: editAvatar }).eq("id", userProfile.id);if (!error) {setUserProfile({ ...userProfile, full_name: editName, avatar_url: editAvatar });setIsEditingProfile(false);toast.success("Profile Updated");}};
+  const PropertyCard = ({ p, isHero = false }: { p: any, isHero?: boolean }) => {const amenitiesCount = Array.from(new Set([...(p.features || []), ...(p.tags || [])])).length;return (
       <motion.div 
         layout
         initial={{ opacity: 0, y: 20 }} 

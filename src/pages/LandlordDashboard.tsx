@@ -1,156 +1,17 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import {
-  Building2, Trash2, X, Plus, Loader2, Edit3, 
-  Sparkles, Zap, Droplets, Wifi, Car, Shield, Wind, Dumbbell, User, Settings, 
-  LogOut, ChevronDown, Star, Phone, Mail, MapPin, Maximize
-} from "lucide-react";
-import { toast } from "sonner";
-import { useAuth } from "@/contexts/AuthContext";
-import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
-
-const LandlordDashboard = () => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  
-  const [properties, setProperties] = useState<any[]>([]);
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
-
-  const availableTags = [
-    { id: "WiFi", icon: Wifi },
-    { id: "Parking", icon: Car },
-    { id: "Drinking Water", icon: Droplets },
-    { id: "AC", icon: Wind },
-    { id: "CCTV", icon: Shield },
-    { id: "Gym", icon: Dumbbell },
-    { id: "Power Backup", icon: Zap },
-  ];
-
-  const [form, setForm] = useState({
-    title: "", address: "", area: "", rent: "", gallery_images: "",
-    bedrooms: "1", bathrooms: "1", sqft: "", tags: [] as string[],
-    phone: "", contact_email: "", video_url: "", vr_url: "",
-  });
-
-  const fetchData = async () => {
-    if (!user) return;
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("properties")
-      .select("*")
-      .eq("landlord_id", user.id)
-      .order("created_at", { ascending: false });
-
-    if (!error) setProperties(data || []);
-    setLoading(false);
-  };
-
-  useEffect(() => { fetchData(); }, [user]);
-
-  const toggleTag = (tagId: string) => {
-    setForm(prev => ({
-      ...prev,
-      tags: prev.tags.includes(tagId) ? prev.tags.filter(t => t !== tagId) : [...prev.tags, tagId]
-    }));
-  };
-
-  const handleEdit = (p: any) => {
-    setEditingId(p.id);
-    setForm({
-      title: p.title || "",
-      address: p.address || "",
-      area: p.area || "",
-      rent: p.rent?.toString() || "",
-      gallery_images: p.images?.join(", ") || p.image_url || "",
-      bedrooms: (p.bedrooms || 1).toString(),
-      bathrooms: (p.bathrooms || 1).toString(),
-      sqft: (p.sqft || "").toString(),
-      tags: p.features || [],
-      phone: p.phone || "",
-      contact_email: p.contact_email || "",
-      video_url: p.video_url || "",
-      vr_url: p.vr_url || "",
-    });
-    setShowForm(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-    setIsSubmitting(true);
-
-    // Clean image array from CSV input
-    const imageArray = form.gallery_images
-      .split(",")
-      .map(url => url.trim())
-      .filter(url => url.startsWith("http"));
-    
-    const payload = {
-      title: form.title,
-      address: form.address,
-      area: form.area,
-      rent: parseFloat(form.rent),
-      image_url: imageArray[0] || null,
-      images: imageArray,
-      bedrooms: parseInt(form.bedrooms),
-      bathrooms: parseInt(form.bathrooms),
-      sqft: parseInt(form.sqft) || 0,
-      features: form.tags,
-      phone: form.phone || null,
-      contact_email: form.contact_email || null,
-      video_url: form.video_url || null,
-      vr_url: form.vr_url || null,
-      has_vr: !!form.vr_url,
-      landlord_id: user.id
-    };
-
-    const { error } = editingId 
-      ? await supabase.from("properties").update(payload).eq("id", editingId) 
-      : await supabase.from("properties").insert([payload]);
-
-    if (error) { 
-      toast.error("Operation failed", { description: error.message }); 
-    } else { 
-      toast.success(editingId ? "Property updated!" : "Property added!"); 
-      resetForm(); 
-      fetchData(); 
-    }
-    setIsSubmitting(false);
-  };
-
-  const resetForm = () => {
-    setShowForm(false);
-    setEditingId(null);
-    setForm({ 
-      title: "", address: "", area: "", rent: "", gallery_images: "", 
-      bedrooms: "1", bathrooms: "1", sqft: "", tags: [], 
-      phone: "", contact_email: "", video_url: "", vr_url: "",
-    });
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("Delete this listing permanently?")) return;
-    const { error } = await supabase.from("properties").delete().eq("id", id);
-    if (error) toast.error("Could not delete");
-    else {
-      toast.success("Listing removed");
-      fetchData();
-    }
-  };
-
-  const handleLogout = async () => {
-    await (supabase.auth as any).signOut();
-    navigate("/auth");
-  };
-
-  if (loading && !showForm) return <div className="h-screen flex flex-col items-center justify-center gap-4"><Loader2 className="w-8 h-8 animate-spin text-primary" /><p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Syncing Portfolio...</p></div>;
-
+import { useState, useEffect } from "react";import { supabase } from "@/integrations/supabase/client";import {Building2, Trash2, X, Plus, Loader2, Edit3,Sparkles, Zap, Droplets, Wifi, Car, Shield, Wind, Dumbbell, User, Settings,LogOut, ChevronDown, Star, Phone, Mail, MapPin, Maximize} from "lucide-react";
+import { toast } from "sonner";import { useAuth } from "@/contexts/AuthContext";import { motion, AnimatePresence } from "framer-motion";import { useNavigate } from "react-router-dom";
+const LandlordDashboard = () => {const { user } = useAuth();const navigate = useNavigate();const [properties, setProperties] = useState<any[]>([]);const [showForm, setShowForm] = useState(false);const [editingId, setEditingId] = useState<string | null>(null);const [loading, setLoading] = useState(true);const [isSubmitting, setIsSubmitting] = useState(false);const [showUserMenu, setShowUserMenu] = useState(false);
+  const availableTags = [{ id: "WiFi", icon: Wifi },{ id: "Parking", icon: Car },{ id: "Drinking Water", icon: Droplets },{ id: "AC", icon: Wind },{ id: "CCTV", icon: Shield },{ id: "Gym", icon: Dumbbell },{ id: "Power Backup", icon: Zap },];
+  const [form, setForm] = useState({title: "", address: "", area: "", rent: "", gallery_images: "",bedrooms: "1", bathrooms: "1", sqft: "", tags: [] as string[],phone: "", contact_email: "", video_url: "", vr_url: "",});
+  const fetchData = async () => {if (!user) return;setLoading(true);const { data, error } = await supabase.from("properties")  .select("*")  .eq("landlord_id", user.id) .order("created_at", { ascending: false });if (!error) setProperties(data || []);setLoading(false);};
+  useEffect(() => { fetchData(); }, [user]);const toggleTag = (tagId: string) => {setForm(prev => ({...prev,tags: prev.tags.includes(tagId) ? prev.tags.filter(t => t !== tagId) : [...prev.tags, tagId]}));};
+  const handleEdit = (p: any) => {setEditingId(p.id);setForm({title: p.title || "",address: p.address || "",area: p.area || "",rent: p.rent?.toString() || "",gallery_images: p.images?.join(", ") || p.image_url || "",bedrooms: (p.bedrooms || 1).toString(),bathrooms: (p.bathrooms || 1).toString(),sqft: (p.sqft || "").toString(),tags: p.features || [],phone: p.phone || "",contact_email: p.contact_email || "",video_url: p.video_url || "",vr_url: p.vr_url || "",});setShowForm(true);window.scrollTo({ top: 0, behavior: 'smooth' });};
+  const handleSubmit = async (e: React.FormEvent) => {e.preventDefault();if (!user) return;setIsSubmitting(true);const imageArray = form.gallery_images.split(",").map(url => url.trim()).filter(url => url.startsWith("http"));const payload = {title: form.title,address: form.address,area: form.area,rent: parseFloat(form.rent),image_url: imageArray[0] || null,images: imageArray,bedrooms: parseInt(form.bedrooms),bathrooms: parseInt(form.bathrooms),sqft: parseInt(form.sqft) || 0,features: form.tags,phone: form.phone || null,contact_email: form.contact_email || null,video_url: form.video_url || null,vr_url: form.vr_url || null,has_vr: !!form.vr_url,landlord_id: user.id};
+    const { error } = editingId ? await supabase.from("properties").update(payload).eq("id", editingId): await supabase.from("properties").insert([payload]);
+    if (error) {toast.error("Operation failed", { description: error.message });} else {toast.success(editingId ? "Property updated!" : "Property added!");resetForm();fetchData();}setIsSubmitting(false);};
+  const resetForm = () => {setShowForm(false);setEditingId(null);setForm({title: "", address: "", area: "", rent: "", gallery_images: "",bedrooms: "1", bathrooms: "1", sqft: "", tags: [],phone: "", contact_email: "", video_url: "", vr_url: "",});};
+  const handleDelete = async (id: string) => {if (!window.confirm("Delete this listing permanently?")) return;const { error } = await supabase.from("properties").delete().eq("id", id);if (error) toast.error("Could not delete");else {toast.success("Listing removed");fetchData();}};
+  const handleLogout = async () => {await (supabase.auth as any).signOut();navigate("/auth");};if (loading && !showForm) return <div className="h-screen flex flex-col items-center justify-center gap-4"><Loader2 className="w-8 h-8 animate-spin text-primary" /><p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Syncing Portfolio...</p></div>;
   return (
     <div className="max-w-6xl mx-auto px-4 py-12 space-y-12">
       {/* HEADER */}
@@ -164,12 +25,10 @@ const LandlordDashboard = () => {
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.3em] mt-1">Live Portfolio Tracking</p>
           </div>
         </div>
-
         <div className="flex items-center gap-4">
           <button onClick={() => { resetForm(); setShowForm(true); }} className="px-8 py-4 rounded-2xl bg-foreground text-background text-[11px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all shadow-xl flex items-center gap-2">
             <Plus className="w-4 h-4" /> Add Listing
           </button>
-
           <div className="relative">
             <button onClick={() => setShowUserMenu(!showUserMenu)} className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center hover:bg-border transition-colors border border-border/50">
               <User className="w-6 h-6" />
@@ -187,7 +46,6 @@ const LandlordDashboard = () => {
           </div>
         </div>
       </header>
-
       {/* FORM MODAL-LIKE OVERLAY */}
       <AnimatePresence>
         {showForm && (
@@ -207,7 +65,6 @@ const LandlordDashboard = () => {
               </div>
               <button type="button" onClick={resetForm} className="w-12 h-12 flex items-center justify-center hover:bg-secondary rounded-2xl transition-colors"><X className="w-6 h-6"/></button>
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {/* BASIC INFO */}
               <div className="lg:col-span-2 space-y-6">
@@ -226,7 +83,6 @@ const LandlordDashboard = () => {
                   </div>
                 </div>
               </div>
-
               {/* RENT & STATS */}
               <div className="space-y-6 bg-secondary/30 p-6 rounded-[2rem] border border-border/50">
                 <div className="space-y-2">
@@ -244,7 +100,6 @@ const LandlordDashboard = () => {
                   </div>
                 </div>
               </div>
-
               {/* AMENITIES */}
               <div className="lg:col-span-3 space-y-4 pt-4 border-t border-border">
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
@@ -258,7 +113,6 @@ const LandlordDashboard = () => {
                   ))}
                 </div>
               </div>
-
               {/* MEDIA SECTION */}
               <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
                 <div className="space-y-2">
@@ -271,7 +125,6 @@ const LandlordDashboard = () => {
                 </div>
               </div>
             </div>
-
             <div className="flex gap-4 pt-6">
                <button type="submit" disabled={isSubmitting} className="flex-1 py-6 rounded-[2rem] bg-foreground text-background text-xs font-black uppercase tracking-[0.3em] hover:bg-primary hover:text-white transition-all disabled:opacity-50 active:scale-95 shadow-2xl">
                 {isSubmitting ? "Processing..." : "Deploy Listing to Marketplace"}
@@ -280,7 +133,6 @@ const LandlordDashboard = () => {
           </motion.form>
         )}
       </AnimatePresence>
-
       {/* PORTFOLIO GRID */}
       <section className="space-y-8">
         <div className="flex items-center justify-between px-4">
@@ -288,7 +140,6 @@ const LandlordDashboard = () => {
             <div className="w-2 h-2 rounded-full bg-primary animate-pulse" /> Asset Inventory ({properties.length})
           </h2>
         </div>
-
         {properties.length === 0 ? (
           <div className="py-32 text-center bg-card border border-dashed border-border rounded-[3rem]">
             <Building2 className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
@@ -305,7 +156,6 @@ const LandlordDashboard = () => {
                     <span className="text-[10px] font-black text-white">{p.rating || "5.0"}</span>
                   </div>
                 </div>
-
                 <div className="flex-1 min-w-0 space-y-4">
                   <div>
                     <h3 className="text-xl font-black uppercase tracking-tighter truncate">{p.title}</h3>
@@ -313,7 +163,6 @@ const LandlordDashboard = () => {
                       <MapPin className="w-3 h-3 text-primary" /> {p.area}
                     </p>
                   </div>
-                  
                   <div className="flex items-center justify-between border-t border-border/50 pt-4">
                     <p className="text-lg font-black text-primary italic">₹{p.rent?.toLocaleString()}</p>
                     <div className="flex gap-2">
@@ -331,12 +180,8 @@ const LandlordDashboard = () => {
           </div>
         )}
       </section>
-
       <footer className="py-12 text-center opacity-20">
         <p className="text-[9px] font-black uppercase tracking-[0.5em]">Systems Optimized by MV Studios Japan</p>
       </footer>
     </div>
-  );
-};
-
-export default LandlordDashboard;
+  );};export default LandlordDashboard;
