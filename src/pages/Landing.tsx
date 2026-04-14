@@ -42,6 +42,7 @@ const Landing = () => {
   // Compare
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [showCompare, setShowCompare] = useState(false);
+  const [compareProperties, setCompareProperties] = useState<any[]>([]);
 
   useEffect(() => {
     checkUser();
