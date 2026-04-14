@@ -223,10 +223,10 @@ const Landing = () => {
       </AnimatePresence>
 
       {/* Compare Drawer */}
-      {showCompare && compareIds.length === 2 && (
+      {showCompare && compareProperties.length === 2 && (
         <ComparisonDrawer
-          propertyIds={compareIds}
-          onClose={() => { setShowCompare(false); setCompareIds([]); }}
+          properties={compareProperties}
+          onClose={() => { setShowCompare(false); setCompareIds([]); setCompareProperties([]); }}
         />
       )}
 
