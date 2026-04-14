@@ -135,8 +135,12 @@ const Landing = () => {
   };
 
   useEffect(() => {
-    if (compareIds.length === 2) setShowCompare(true);
-  }, [compareIds]);
+    if (compareIds.length === 2) {
+      const props = compareIds.map(cid => list.find(p => p.id === cid)).filter(Boolean);
+      setCompareProperties(props);
+      setShowCompare(true);
+    }
+  }, [compareIds, list]);
 
   const filters = [
     { i: Wallet, l: "Budget PGs", d: "Smart Optimizer", a: () => setShowBudgetModal(true) },
