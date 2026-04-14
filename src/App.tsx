@@ -29,7 +29,7 @@ const queryClient = new QueryClient();
 const PageLoader = () => (
   <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
     <Loader2 className="w-10 h-10 text-primary animate-spin opacity-80" />
-    <p className="text-sm font-medium text-muted-foreground animate-pulse">Loading RentHelp...</p>
+    <p className="text-sm font-medium text-muted-foreground animate-pulse">Loading RentifyX...</p>
   </div>
 );
 

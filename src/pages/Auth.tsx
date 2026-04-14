@@ -1,65 +1,13 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { Mail, Lock, ArrowLeft, Eye, EyeOff } from "lucide-react";
-import { toast } from "sonner";
-import { useAuth } from "@/contexts/AuthContext";
-
-const Auth = () => {
-  const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<"landlord" | "tenant">("tenant");
-  const navigate = useNavigate();
-  const { user } = useAuth();
-
-  const MASTER_ADMIN_EMAIL = "vanshsxn2006@gmail.com";
-
-  useEffect(() => {
-    if (user) {
-      checkRoleAndRedirect(user.id, user.email);
-    }
-  }, [user]);
-
-  const checkRoleAndRedirect = async (userId: string, userEmail?: string) => {
-    if (userEmail === MASTER_ADMIN_EMAIL) {
-      navigate("/admin", { replace: true });
-      return;
-    }
-
-    const { data: roleData } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .single();
-
-    if (!roleData) {
-      navigate(selectedRole === "landlord" ? "/landlord" : "/tenant", { replace: true });
-      return;
-    }
-
-    if (roleData.role === "admin") navigate("/admin", { replace: true });
-    else if (roleData.role === "landlord") navigate("/landlord", { replace: true });
-    else navigate("/tenant", { replace: true });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    if (isLogin) {
+import { useState, useEffect } from "react";import { supabase } from "@/integrations/supabase/client";import { useNavigate } from "react-router-dom";import { motion } from "framer-motion";import { Mail, Lock, ArrowLeft, Eye, EyeOff } from "lucide-react";import { toast } from "sonner";import { useAuth } from "@/contexts/AuthContext";
+const Auth = () => {const [isLogin, setIsLogin] = useState(true);const [email, setEmail] = useState("");const [password, setPassword] = useState("");const [showPassword, setShowPassword] = useState(false);const [loading, setLoading] = useState(false);const [selectedRole, setSelectedRole] = useState<"landlord" | "tenant">("tenant");const navigate = useNavigate();const { user } = useAuth();
+  const MASTER_ADMIN_EMAIL = "vanshsxn2006@gmail.com";useEffect(() => {if (user) {checkRoleAndRedirect(user.id, user.email);}}, [user]);const checkRoleAndRedirect = async (userId: string, userEmail?: string) => {if (userEmail === MASTER_ADMIN_EMAIL) {navigate("/admin", { replace: true });return;}
+    const { data: roleData } = await supabase .from("user_roles") .select("role").eq("user_id", userId).single();
+    if (!roleData) {navigate(selectedRole === "landlord" ? "/landlord" : "/tenant", { replace: true }); return;}
+    if (roleData.role === "admin") navigate("/admin", { replace: true });else if (roleData.role === "landlord") navigate("/landlord", { replace: true });else navigate("/tenant", { replace: true });};
+  const handleSubmit = async (e: React.FormEvent) => {e.preventDefault();setLoading(true);if (isLogin) {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        toast.error("Login failed", { description: error.message });
-      } else if (data.user) {
-        toast.success("Welcome back!");
-        await checkRoleAndRedirect(data.user.id, data.user.email);
-      }
-    } else {
-      const { data, error } = await supabase.auth.signUp({
+      if (error) {toast.error("Login failed", { description: error.message });} else if (data.user) {toast.success("Welcome back!"); await checkRoleAndRedirect(data.user.id, data.user.email);}
+    } else {const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
