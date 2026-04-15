@@ -17,6 +17,8 @@ const ProfileDashboard = lazy(() => import("@/pages/Profile"));
 const Landing = lazy(() => import("@/pages/Landing"));
 const Properties = lazy(() => import("@/pages/Properties"));
 const PropertyDetail = lazy(() => import("@/pages/PropertyDetail"));
+const Furnished = lazy(() => import("@/pages/Furnished"));
+const Shared = lazy(() => import("@/pages/Shared"));
 const TenantDashboard = lazy(() => import("@/pages/TenantDashboard"));
 const LandlordDashboard = lazy(() => import("@/pages/LandlordDashboard"));
 const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
