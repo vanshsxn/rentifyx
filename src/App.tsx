@@ -83,8 +83,9 @@ const AppContent = () => {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/properties" element={<Properties />} />
+        <Route path="/furnished" element={<Furnished />} />
+        <Route path="/shared" element={<Shared />} />
         <Route path="/property/:id" element={<PropertyDetail />} />
-        <Route path="/auth" element={<Auth />} />
         
         {/* --- 2. ADD THE PROFILE ROUTE HERE --- */}
         <Route
