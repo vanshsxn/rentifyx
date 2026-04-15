@@ -17,6 +17,8 @@ const ProfileDashboard = lazy(() => import("@/pages/Profile"));
 const Landing = lazy(() => import("@/pages/Landing"));
 const Properties = lazy(() => import("@/pages/Properties"));
 const PropertyDetail = lazy(() => import("@/pages/PropertyDetail"));
+const Furnished = lazy(() => import("@/pages/Furnished"));
+const Shared = lazy(() => import("@/pages/Shared"));
 const TenantDashboard = lazy(() => import("@/pages/TenantDashboard"));
 const LandlordDashboard = lazy(() => import("@/pages/LandlordDashboard"));
 const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
@@ -81,9 +83,10 @@ const AppContent = () => {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/properties" element={<Properties />} />
+        <Route path="/furnished" element={<Furnished />} />
+        <Route path="/shared" element={<Shared />} />
         <Route path="/property/:id" element={<PropertyDetail />} />
         <Route path="/auth" element={<Auth />} />
-        
         {/* --- 2. ADD THE PROFILE ROUTE HERE --- */}
         <Route
           path="/profile"

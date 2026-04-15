@@ -84,14 +84,18 @@ export type Database = {
           created_at: string
           distance: string | null
           features: string[] | null
+          furnish_type: string | null
           has_vr: boolean | null
           id: string
           image_url: string | null
           is_featured: boolean | null
           landlord_id: string
+          latitude: number | null
+          longitude: number | null
           phone: string | null
           rating: number | null
           rent: number
+          sharing_type: string | null
           sqft: number | null
           tags: string[] | null
           title: string
@@ -109,14 +113,18 @@ export type Database = {
           created_at?: string
           distance?: string | null
           features?: string[] | null
+          furnish_type?: string | null
           has_vr?: boolean | null
           id?: string
           image_url?: string | null
           is_featured?: boolean | null
           landlord_id: string
+          latitude?: number | null
+          longitude?: number | null
           phone?: string | null
           rating?: number | null
           rent: number
+          sharing_type?: string | null
           sqft?: number | null
           tags?: string[] | null
           title: string
@@ -134,14 +142,18 @@ export type Database = {
           created_at?: string
           distance?: string | null
           features?: string[] | null
+          furnish_type?: string | null
           has_vr?: boolean | null
           id?: string
           image_url?: string | null
           is_featured?: boolean | null
           landlord_id?: string
+          latitude?: number | null
+          longitude?: number | null
           phone?: string | null
           rating?: number | null
           rent?: number
+          sharing_type?: string | null
           sqft?: number | null
           tags?: string[] | null
           title?: string
