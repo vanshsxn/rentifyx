@@ -2,9 +2,9 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowRight, Star, MapPin, Wallet, Home, Users, 
-  X, Zap, IndianRupee, LayoutDashboard, LogIn, AlertTriangle, Phone, 
-  Search, Bell, Menu, Building2, Bed, Wifi, Wind, Tv, 
-  ChevronRight, MapPinned, GitCompareArrows, Navigation, PanelLeftClose, PanelLeft
+  X, Zap, IndianRupee, LayoutDashboard, Search, Bell, 
+  Building2, Bed, Wifi, Wind, Tv, ChevronRight, 
+  MapPinned, Navigation, PanelLeftClose, PanelLeft, Phone
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,34 +14,16 @@ const Landing = () => {
   const navigate = useNavigate();
   const [list, setList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [showEmergency, setShowEmergency] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [showEmergency, setShowEmergency] = useState(false);
+  const [userRole, setUserRole] = useState<"tenant" | "landlord">("tenant");
 
-  // Widget States
+  // Filter States
   const [budgetVal, setBudgetVal] = useState(15000);
-  const [furnishingType, setFurnishingType] = useState<"fully" | "minimal">("fully");
-  const [totalRentInput, setTotalRentInput] = useState(18000);
-  const [peopleCount, setPeopleCount] = useState(3);
 
   useEffect(() => {
-    checkUser();
     getFeatured();
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((pos) => {
-        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-      });
-    }
   }, []);
-
-  const checkUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      const { data } = await supabase.from("user_roles").select("role").eq("user_id", session.user.id).maybeSingle();
-      setUserRole(data?.role || "tenant");
-    }
-  };
 
   const getFeatured = async () => {
     setLoading(true);
@@ -51,14 +33,10 @@ const Landing = () => {
     setLoading(false);
   };
 
-  const handleBudgetNavigation = () => {
-    navigate(`/properties?maxBudget=${budgetVal}`);
-  };
-
   return (
     <div className="flex h-screen bg-[#F8F9FB] text-slate-900 overflow-hidden font-sans">
       
-      {/* 1. COLLAPSIBLE SIDEBAR */}
+      {/* 1. SIDEBAR */}
       <AnimatePresence mode="wait">
         {sidebarOpen && (
           <motion.aside 
@@ -69,10 +47,10 @@ const Landing = () => {
           >
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center shadow-md shadow-indigo-100">
+                <div className="w-8 h-8 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-100">
                   <MapPin className="text-white w-4 h-4" />
                 </div>
-                <span className="text-lg font-black tracking-tighter">Rentifyx</span>
+                <span className="text-xl font-black tracking-tighter">Rentifyx</span>
               </div>
               <button onClick={() => setSidebarOpen(false)} className="text-slate-400 hover:text-indigo-600 transition-colors">
                 <PanelLeftClose size={18} />
@@ -80,11 +58,11 @@ const Landing = () => {
             </div>
 
             <nav className="space-y-1 flex-1">
-              <button onClick={() => navigate("/")} className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl bg-indigo-50 text-indigo-600 font-bold border border-indigo-100/50">
-                <LayoutDashboard size={16} /> <span className="text-sm">Dashboard</span>
+              <button onClick={() => navigate("/")} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-indigo-50 text-indigo-600 font-bold">
+                <LayoutDashboard size={18} /> <span className="text-sm">Dashboard</span>
               </button>
-              <button className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-slate-500 hover:bg-slate-50 transition-all font-semibold">
-                <Search size={16} /> <span className="text-sm">Search PG</span>
+              <button onClick={() => navigate("/properties")} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-50 transition-all font-semibold">
+                <Search size={18} /> <span className="text-sm">Search PG</span>
               </button>
             </nav>
           </motion.aside>
@@ -96,13 +74,13 @@ const Landing = () => {
         <header className="h-16 border-b border-slate-200 bg-white/70 backdrop-blur-md px-8 flex items-center justify-between z-40">
           <div className="flex items-center gap-4 flex-1">
             {!sidebarOpen && (
-              <button onClick={() => setSidebarOpen(true)} className="p-1.5 bg-white border border-slate-200 rounded-lg text-slate-600 hover:text-indigo-600 transition-all shadow-sm">
+              <button onClick={() => setSidebarOpen(true)} className="p-2 bg-white border border-slate-200 rounded-lg text-slate-600 shadow-sm">
                 <PanelLeft size={18} />
               </button>
             )}
             <div className="relative w-full max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />
-              <input type="text" placeholder="Quick Search..." className="w-full bg-slate-100 border-none rounded-xl py-1.5 pl-10 pr-4 text-xs outline-none focus:ring-2 focus:ring-indigo-500/20" />
+              <input type="text" placeholder="Quick Search..." className="w-full bg-slate-100 border-none rounded-xl py-2 pl-10 pr-4 text-xs outline-none" />
             </div>
           </div>
           
@@ -116,78 +94,81 @@ const Landing = () => {
         </header>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-          {/* HERO SECTION - Taller to show more video */}
-          <div className="relative h-[55vh] w-full overflow-hidden bg-slate-200">
-            <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover opacity-70">
+          {/* HERO SECTION */}
+          <div className="relative h-[50vh] w-full overflow-hidden bg-slate-200">
+            <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover opacity-60">
               <source src="/hero-video.mp4" type="video/mp4" />
             </video>
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/10 to-[#F8F9FB]" />
-            <div className="relative z-10 h-full flex flex-col items-center justify-center pb-12">
-               <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-center leading-[0.9] text-slate-900 drop-shadow-md">
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/20 to-[#F8F9FB]" />
+            
+            <div className="relative z-10 h-full flex flex-col items-center justify-center px-4">
+               {/* ROLE TOGGLE */}
+               <div className="flex p-1 bg-white/80 backdrop-blur-md rounded-2xl border border-white mb-6 shadow-sm">
+                  <button onClick={() => setUserRole("tenant")} className={`px-6 py-2 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all ${userRole === "tenant" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400"}`}>Tenant</button>
+                  <button onClick={() => setUserRole("landlord")} className={`px-6 py-2 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all ${userRole === "landlord" ? "bg-indigo-600 text-white shadow-md" : "text-slate-400"}`}>Landlord</button>
+               </div>
+
+               <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-center leading-[0.9] text-slate-900 mb-8">
                   FIND RENT<br/>
                   <span className="text-indigo-600 italic">RELAX.</span>
                </h1>
+
+               <button onClick={() => navigate("/properties")} className="flex items-center gap-3 px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-200 hover:scale-105 transition-transform">
+                  Browse Listings <ArrowRight size={16} />
+               </button>
             </div>
           </div>
 
-          <div className="px-8 -mt-10 relative z-20 pb-20">
-            {/* COMPACT WIDGETS - Lowered icons and overall size */}
+          <div className="px-8 -mt-8 relative z-20 pb-20">
+            {/* WIDGETS WITH CURVED SQUARE ICONS */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-16">
               
-              {/* BUDGET */}
-              <div className="p-4 rounded-[1.8rem] bg-white border border-slate-200 shadow-xl shadow-slate-200/40 flex flex-col items-center">
-                <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center mb-2">
-                  <Wallet className="text-indigo-600 w-4 h-4" />
+              {/* BUDGET - Functional */}
+              <div onClick={() => navigate(`/properties?maxBudget=${budgetVal}`)} className="p-6 rounded-[2.5rem] bg-white border border-slate-200 shadow-xl shadow-slate-200/40 flex flex-col items-center cursor-pointer hover:border-indigo-200 transition-all group">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center mb-4 transition-transform group-hover:scale-110">
+                  <Wallet className="text-indigo-600 w-5 h-5" />
                 </div>
-                <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400">Budget PGs</h3>
-                <p className="font-bold text-slate-800 text-xs mb-3">₹ 5,000 - ₹ {budgetVal.toLocaleString()}</p>
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Budget PGs</h3>
+                <p className="font-bold text-slate-800 text-sm mb-3">Up to ₹{budgetVal.toLocaleString()}</p>
                 <input 
-                  type="range" min="5000" max="50000" step="500"
-                  value={budgetVal}
-                  onChange={(e) => setBudgetVal(parseInt(e.target.value))}
-                  onMouseUp={handleBudgetNavigation}
+                  type="range" min="5000" max="50000" step="500" 
+                  value={budgetVal} 
+                  onChange={(e) => { e.stopPropagation(); setBudgetVal(parseInt(e.target.value)); }} 
                   className="w-full h-1 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                 />
               </div>
 
-              {/* FURNISHED */}
-              <div className="p-4 rounded-[1.8rem] bg-white border border-slate-200 shadow-xl shadow-slate-200/40">
-                <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center mb-2 mx-auto">
-                  <Home className="text-indigo-600 w-4 h-4" />
+              {/* FURNISHED - Functional */}
+              <div onClick={() => navigate("/properties?furnished=true")} className="p-6 rounded-[2.5rem] bg-white border border-slate-200 shadow-xl shadow-slate-200/40 flex flex-col items-center cursor-pointer hover:border-indigo-200 transition-all group">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center mb-4 transition-transform group-hover:scale-110">
+                  <Home className="text-indigo-600 w-5 h-5" />
                 </div>
-                <div className="flex flex-col gap-1.5">
-                  <button onClick={() => setFurnishingType("fully")} className={`w-full py-1.5 px-3 rounded-lg text-[9px] font-bold flex items-center justify-between ${furnishingType === "fully" ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-400'}`}>
-                    Fully Furnished <Zap size={10} />
-                  </button>
-                  <button onClick={() => setFurnishingType("minimal")} className={`w-full py-1.5 px-3 rounded-lg text-[9px] font-bold ${furnishingType === "minimal" ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-400'}`}>
-                    Minimal Setup
-                  </button>
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Furnished</h3>
+                <p className="font-bold text-slate-800 text-sm">Premium Sets</p>
+                <p className="text-[9px] text-slate-400 font-bold uppercase mt-2">Ready to Move</p>
+              </div>
+
+              {/* SHARED - Functional */}
+              <div onClick={() => navigate("/properties?type=shared")} className="p-6 rounded-[2.5rem] bg-white border border-slate-200 shadow-xl shadow-slate-200/40 flex flex-col items-center cursor-pointer hover:border-indigo-200 transition-all group">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center mb-4 transition-transform group-hover:scale-110">
+                  <Users className="text-indigo-600 w-5 h-5" />
+                </div>
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Shared</h3>
+                <p className="font-bold text-slate-800 text-sm">Split Cost</p>
+                <div className="mt-2 flex gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" /><span className="w-1.5 h-1.5 rounded-full bg-indigo-200" /><span className="w-1.5 h-1.5 rounded-full bg-indigo-100" />
                 </div>
               </div>
 
-              {/* SHARED */}
-              <div className="p-4 rounded-[1.8rem] bg-white border border-slate-200 shadow-xl shadow-slate-200/40 text-center">
-                <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center mb-2 mx-auto">
-                  <Users className="text-indigo-600 w-4 h-4" />
+              {/* NEAR ME - Functional */}
+              <div onClick={() => navigate("/properties?sort=distance")} className="p-6 rounded-[2.5rem] bg-white border border-slate-200 shadow-xl shadow-slate-200/40 flex flex-col items-center cursor-pointer hover:border-indigo-200 transition-all group">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center mb-4 transition-transform group-hover:scale-110">
+                  <MapPinned className="text-indigo-600 w-5 h-5" />
                 </div>
-                <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Shared</h3>
-                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
-                  <p className="text-sm font-black text-indigo-600 leading-none">₹{Math.round(totalRentInput / peopleCount)}</p>
-                  <p className="text-[8px] text-slate-400 uppercase font-bold tracking-tighter mt-1">Split cost</p>
-                </div>
-              </div>
-
-              {/* NEAR ME */}
-              <div className="p-4 rounded-[1.8rem] bg-white border border-slate-200 shadow-xl shadow-slate-200/40 flex flex-col items-center">
-                <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center mb-2">
-                  <MapPinned className="text-indigo-600 w-4 h-4" />
-                </div>
-                <div className="flex gap-1.5 mb-2">
-                  <span className="px-2 py-0.5 bg-indigo-600 text-white text-[8px] font-black rounded-full uppercase">Near Me</span>
-                  <span className="px-2 py-0.5 bg-slate-100 text-slate-400 text-[8px] font-black rounded-full uppercase">Closest</span>
-                </div>
-                <div className="flex justify-center gap-3 text-slate-300 mt-auto">
-                  <Wifi size={14} /> <Tv size={14} /> <Users size={14} /> <Wind size={14} />
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Near Me</h3>
+                <div className="flex gap-2 mt-1">
+                   <span className="px-2 py-0.5 bg-indigo-600 text-white text-[8px] font-black rounded-full uppercase">Live</span>
+                   <span className="px-2 py-0.5 bg-slate-100 text-slate-400 text-[8px] font-black rounded-full uppercase">GPS</span>
                 </div>
               </div>
             </div>
@@ -195,7 +176,7 @@ const Landing = () => {
             {/* FEATURED UNITS */}
             <div className="space-y-6">
               <h2 className="text-3xl font-black tracking-tighter text-slate-800">Featured Units</h2>
-              {loading ? <CubeLoader /> : (
+              {loading ? <div className="h-40 flex items-center justify-center"><CubeLoader /></div> : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {list.map((p) => (
                     <motion.div 
