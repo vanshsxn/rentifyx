@@ -10,6 +10,8 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import CubeLoader from "@/components/CubeLoader";
+import ChatDrawer from "@/components/ChatDrawer";
+import { startConversation } from "@/hooks/useChat";
 
 const RecommendedSection = ({ currentProperty }: { currentProperty: any }) => {
   const [recommendations, setRecommendations] = useState<any[]>([]);
@@ -198,6 +200,8 @@ const PropertyDetail = () => {
   const [hasRequested, setHasRequested] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [requestLoading, setRequestLoading] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [activeConv, setActiveConv] = useState<string | null>(null);
 
   useEffect(() => {
     const getData = async () => {
@@ -235,17 +239,28 @@ const PropertyDetail = () => {
 
   const handleChatRequest = async () => {
     if (!user) return toast.error("Please sign in to contact the landlord");
-    if (hasRequested) return toast.info("Request already pending");
+    if (!p?.landlord_id) return toast.error("Landlord info missing");
+    if (p.landlord_id === user.id) return toast.info("This is your own listing");
     setRequestLoading(true);
-    const { error } = await supabase.from("tenant_requests").insert({
-      property_id: id!,
-      tenant_id: user.id,
-      message: `Hi, I am interested in ${p.title}. Let's chat!`,
-      status: "pending",
-      urgent: false,
-    });
-    if (error) toast.error("Failed to send request");
-    else { setHasRequested(true); toast.success("Request sent to Landlord!"); }
+    // Send a tenant request as a record
+    if (!hasRequested) {
+      await supabase.from("tenant_requests").insert({
+        property_id: id!,
+        tenant_id: user.id,
+        message: `Hi, I am interested in ${p.title}. Let's chat!`,
+        status: "pending",
+        urgent: false,
+      });
+      setHasRequested(true);
+    }
+    // Start / open conversation
+    const convId = await startConversation(user.id, p.landlord_id, id);
+    if (convId) {
+      setActiveConv(convId);
+      setChatOpen(true);
+    } else {
+      toast.error("Couldn't open chat");
+    }
     setRequestLoading(false);
   };
 
