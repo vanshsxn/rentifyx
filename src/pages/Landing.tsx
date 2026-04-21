@@ -75,7 +75,6 @@ const Landing = () => {
                 <LayoutDashboard size={20} /> <span>Main Hub</span>
               </button>
               
-              {/* FIXED NAVIGATION TO TENANT DASHBOARD */}
               <button 
                 onClick={() => navigate(userRole === 'landlord' ? "/landlord-dashboard" : "/tenant-dashboard")} 
                 className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-slate-400 hover:bg-slate-50 hover:text-slate-800 font-bold text-sm transition-all"
@@ -89,7 +88,7 @@ const Landing = () => {
       </AnimatePresence>
 
       <main className="flex-1 flex flex-col relative overflow-hidden">
-        {/* TOP NAVBAR - Fixed Z-Index */}
+        {/* TOP NAVBAR */}
         <header className="h-20 border-b border-slate-100 bg-white/90 backdrop-blur-md px-10 flex items-center justify-between z-[50]">
           <div className="flex items-center gap-6">
             {!sidebarOpen && (
@@ -107,39 +106,46 @@ const Landing = () => {
 
         <div className="flex-1 overflow-y-auto custom-scrollbar">
           
-          {/* VIDEO HERO SECTION */}
-          <div className="relative h-[55vh] w-full bg-black flex items-center justify-center overflow-hidden">
+          {/* HERO SECTION WITH VIDEO */}
+          <div className="relative h-[65vh] w-full flex items-center justify-center overflow-hidden">
             <video 
               autoPlay loop muted playsInline 
-              className="absolute inset-0 w-full h-full object-cover opacity-60"
+              className="absolute inset-0 w-full h-full object-cover"
             >
-              <source src="https://assets.mixkit.co/videos/preview/mixkit-modern-apartment-complex-buildings-under-a-blue-sky-40011-large.mp4" type="video/mp4" />
+              <source src="/hero-video.mp4" type="video/mp4" />
             </video>
-            <div className="absolute inset-0 bg-gradient-to-t from-[#F8F9FB] via-transparent to-black/40" />
-            
-            <div className="relative z-20 text-center px-4 -mt-12">
-               <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20 mb-6">
-                  <Sparkles className="w-3 h-3 text-indigo-400" />
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">Premium Rental Experience</span>
-               </div>
-               <h1 className="text-5xl md:text-8xl font-black tracking-tighter text-white mb-10 uppercase drop-shadow-2xl">
-                 Find Rent <span className="text-indigo-400 italic">Relax.</span>
-               </h1>
-               <div className="flex flex-wrap items-center justify-center gap-4 relative z-30">
-                  <button 
-                    onClick={() => navigate("/properties")} 
-                    className="flex items-center gap-3 px-10 py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-2xl"
-                  >
-                    Browse Listings <ArrowRight size={18} />
-                  </button>
-                  <button className="px-10 py-5 bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-[1.5rem] font-black text-xs uppercase tracking-widest hover:bg-white hover:text-black transition-all">
-                    View Map
-                  </button>
-               </div>
+
+            <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-[#F8F9FB]" />
+
+            <div className="relative z-20 text-center px-4">
+              <p className="text-[11px] tracking-[0.25em] text-white/70 mb-4 uppercase font-bold">
+                PREMIUM RENTAL EXPERIENCE
+              </p>
+
+              <h1 className="text-5xl md:text-7xl font-black text-white leading-[1.1]">
+                FIND RENT <br />
+                <span className="text-indigo-400 italic">RELAX.</span>
+              </h1>
+
+              <div className="flex flex-wrap justify-center gap-4 mt-8">
+                <button 
+                  onClick={() => navigate("/properties")}
+                  className="flex items-center gap-2 px-8 py-4 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition shadow-lg"
+                >
+                  Browse Properties <ArrowRight size={16} />
+                </button>
+
+                <button 
+                  onClick={() => navigate("/tenant-dashboard")}
+                  className="px-8 py-4 bg-white/10 border border-white/20 text-white rounded-xl font-bold text-sm backdrop-blur-md hover:bg-white hover:text-black transition"
+                >
+                  Tenant Hub
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* INTERACTIVE WIDGETS - Added mt- to overlap video slightly but cleanly */}
+          {/* INTERACTIVE WIDGETS */}
           <div className="px-10 -mt-16 relative z-30 pb-24">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-20">
               
