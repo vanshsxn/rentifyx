@@ -80,7 +80,6 @@ const RatingSection = ({ propertyId, adminRating }: { propertyId: string; adminR
         const avg = data.reduce((s, r) => s + Number(r.rating), 0) / data.length;
         setAvgTenantRating(avg);
         setTotalReviews(data.length);
-        // Check if current user already rated
         if (user) {
           const existing = data.find(r => r.user_id === user.id);
           if (existing) {
@@ -241,27 +240,39 @@ const PropertyDetail = () => {
     if (!user) return toast.error("Please sign in to contact the landlord");
     if (!p?.landlord_id) return toast.error("Landlord info missing");
     if (p.landlord_id === user.id) return toast.info("This is your own listing");
+    
     setRequestLoading(true);
-    // Send a tenant request as a record
-    if (!hasRequested) {
-      await supabase.from("tenant_requests").insert({
-        property_id: id!,
-        tenant_id: user.id,
-        message: `Hi, I am interested in ${p.title}. Let's chat!`,
-        status: "pending",
-        urgent: false,
-      });
-      setHasRequested(true);
+    try {
+      if (!hasRequested) {
+        await supabase.from("tenant_requests").insert({
+          property_id: id!,
+          tenant_id: user.id,
+          message: `Hi, I am interested in ${p.title}. Let's chat!`,
+          status: "pending",
+          urgent: false,
+        });
+        setHasRequested(true);
+      }
+
+      // Safe call check for startConversation
+      if (typeof startConversation === 'function') {
+        const convId = await startConversation(user.id, p.landlord_id, id);
+        if (convId) {
+          setActiveConv(convId);
+          setChatOpen(true);
+        } else {
+          toast.error("Couldn't open chat");
+        }
+      } else {
+        console.error("startConversation is not a function. Check useChat hook.");
+        toast.error("Chat service is currently unavailable");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Something went wrong");
+    } finally {
+      setRequestLoading(false);
     }
-    // Start / open conversation
-    const convId = await startConversation(user.id, p.landlord_id, id);
-    if (convId) {
-      setActiveConv(convId);
-      setChatOpen(true);
-    } else {
-      toast.error("Couldn't open chat");
-    }
-    setRequestLoading(false);
   };
 
   if (loading) return (
@@ -294,12 +305,8 @@ const PropertyDetail = () => {
       </header>
 
       <main className="max-w-[1200px] mx-auto px-4 md:px-6 py-6">
-        {/* Myntra/Flipkart Style Image Gallery */}
         <div className="grid grid-cols-1 md:grid-cols-[1fr,380px] gap-6 md:gap-8 items-start mb-16">
-          
-          {/* Image Section - Myntra style */}
           <div className="space-y-3">
-            {/* Main Image - Compact like Myntra */}
             <div className="relative aspect-[4/3] md:aspect-[16/10] bg-secondary rounded-2xl overflow-hidden border border-border group">
               <AnimatePresence mode="wait">
                 {showVR ? (
@@ -319,7 +326,6 @@ const PropertyDetail = () => {
                 )}
               </AnimatePresence>
 
-              {/* Navigation arrows */}
               {!showVR && displayImages.length > 1 && (
                 <>
                   <button onClick={prevImg} className="absolute left-3 top-1/2 -translate-y-1/2 p-2 bg-background/80 backdrop-blur-sm rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background">
@@ -331,14 +337,12 @@ const PropertyDetail = () => {
                 </>
               )}
 
-              {/* Image counter badge */}
               {!showVR && (
                 <div className="absolute bottom-3 right-3 bg-foreground/70 text-background backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-bold">
                   {activeImg + 1} / {displayImages.length}
                 </div>
               )}
 
-              {/* Price tag */}
               {!showVR && (
                 <div className="absolute top-3 right-3 bg-primary text-primary-foreground px-4 py-2 rounded-xl text-xs font-black shadow-lg">
                   ₹{p.rent.toLocaleString()}/mo
@@ -346,7 +350,6 @@ const PropertyDetail = () => {
               )}
             </div>
 
-            {/* Thumbnail strip - horizontal like Myntra */}
             <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
               {displayImages.map((img: string, i: number) => (
                 <button
@@ -361,7 +364,6 @@ const PropertyDetail = () => {
             </div>
           </div>
 
-          {/* Details Panel */}
           <div className="space-y-6">
             <div className="space-y-2">
               <h1 className="text-2xl font-black tracking-tighter uppercase leading-none">{p.title}</h1>
@@ -398,7 +400,6 @@ const PropertyDetail = () => {
               ))}
             </div>
 
-            {/* Amenities */}
             <div className="space-y-3 pt-4 border-t border-border/50">
               <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground flex items-center gap-2">
                 <Sparkles className="w-3 h-3 text-primary" /> Features & Amenities
@@ -446,7 +447,13 @@ const PropertyDetail = () => {
 
         <RecommendedSection currentProperty={p} />
       </main>
-      <ChatDrawer open={chatOpen} onClose={() => setChatOpen(false)} initialConversationId={activeConv} />
+      
+      {/* Safety checks added to ChatDrawer props */}
+      <ChatDrawer 
+        open={chatOpen} 
+        onClose={() => setChatOpen(false)} 
+        initialConversationId={activeConv || undefined} 
+      />
     </div>
   );
 };
