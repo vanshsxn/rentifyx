@@ -25,6 +25,7 @@ const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
 const Auth = lazy(() => import("@/pages/Auth"));
 const Layout = lazy(() => import("@/components/Layout"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
+const NearMe = lazy(() => import("@/pages/NearMe"));
 
 const queryClient = new QueryClient();
 
@@ -86,6 +87,7 @@ const AppContent = () => {
         <Route path="/furnished" element={<Furnished />} />
         <Route path="/shared" element={<Shared />} />
         <Route path="/property/:id" element={<PropertyDetail />} />
+        <Route path="/near-me" element={<NearMe />} />
         <Route path="/auth" element={<Auth />} />
         {/* --- 2. ADD THE PROFILE ROUTE HERE --- */}
         <Route
