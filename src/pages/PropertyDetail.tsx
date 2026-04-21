@@ -446,6 +446,7 @@ const PropertyDetail = () => {
 
         <RecommendedSection currentProperty={p} />
       </main>
+      <ChatDrawer open={chatOpen} onClose={() => setChatOpen(false)} initialConversationId={activeConv} />
     </div>
   );
 };
