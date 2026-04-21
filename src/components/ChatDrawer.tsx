@@ -22,9 +22,17 @@ interface ChatDrawerProps {
 
 const ChatDrawer = ({ open, onClose, initialConversationId, openSupport }: ChatDrawerProps) => {
   const { user } = useAuth();
-  const { conversations, loading } = useConversations();
+  
+  // Safety check: Ensure useConversations returns expected values
+  const convData = useConversations() || { conversations: [], loading: false };
+  const { conversations, loading } = convData;
+
   const [activeId, setActiveId] = useState<string | null>(initialConversationId || null);
-  const { messages, loading: msgLoading } = useMessages(activeId);
+  
+  // Safety check: Ensure useMessages handles null activeId gracefully
+  const msgData = useMessages(activeId) || { messages: [], loading: false };
+  const { messages, loading: msgLoading } = msgData;
+
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -35,18 +43,24 @@ const ChatDrawer = ({ open, onClose, initialConversationId, openSupport }: ChatD
 
   useEffect(() => {
     const openSup = async () => {
-      if (openSupport && user) {
-        const adminId = await findAdminUserId();
-        if (!adminId) {
-          toast.error("Support is currently unavailable");
-          return;
+      if (openSupport && user && typeof findAdminUserId === 'function') {
+        try {
+          const adminId = await findAdminUserId();
+          if (!adminId) {
+            toast.error("Support is currently unavailable");
+            return;
+          }
+          if (adminId === user.id) {
+            toast.info("You ARE the admin 😄");
+            return;
+          }
+          if (typeof startConversation === 'function') {
+            const id = await startConversation(user.id, adminId, undefined, true);
+            if (id) setActiveId(id);
+          }
+        } catch (err) {
+          console.error("Support init error:", err);
         }
-        if (adminId === user.id) {
-          toast.info("You ARE the admin 😄");
-          return;
-        }
-        const id = await startConversation(user.id, adminId, undefined, true);
-        if (id) setActiveId(id);
       }
     };
     if (open) openSup();
@@ -60,18 +74,25 @@ const ChatDrawer = ({ open, onClose, initialConversationId, openSupport }: ChatD
 
   const handleSend = async () => {
     if (!input.trim() || !activeId || !user) return;
+    if (typeof sendMessage !== 'function') return;
+
     setSending(true);
     const text = input.trim();
     setInput("");
-    const { error } = await sendMessage(activeId, user.id, text);
-    if (error) {
-      toast.error("Failed to send");
+    try {
+      const { error } = await sendMessage(activeId, user.id, text);
+      if (error) {
+        toast.error("Failed to send");
+        setInput(text);
+      }
+    } catch (err) {
+      toast.error("Error sending message");
       setInput(text);
     }
     setSending(false);
   };
 
-  const activeConv = conversations.find(c => c.id === activeId);
+  const activeConv = conversations?.find(c => c.id === activeId);
 
   return (
     <AnimatePresence>
@@ -131,7 +152,7 @@ const ChatDrawer = ({ open, onClose, initialConversationId, openSupport }: ChatD
                   <div className="p-8 flex justify-center">
                     <Loader2 className="animate-spin text-indigo-600" />
                   </div>
-                ) : conversations.length === 0 ? (
+                ) : !conversations || conversations.length === 0 ? (
                   <div className="p-10 text-center">
                     <MessageCircle className="w-12 h-12 text-slate-200 mx-auto mb-4" />
                     <p className="text-sm font-bold text-slate-600">No conversations yet</p>
@@ -159,7 +180,7 @@ const ChatDrawer = ({ open, onClose, initialConversationId, openSupport }: ChatD
                             </p>
                           </div>
                           <span className="text-[10px] text-slate-400 shrink-0">
-                            {formatDistanceToNow(new Date(c.updated_at), { addSuffix: false })}
+                            {c.updated_at ? formatDistanceToNow(new Date(c.updated_at), { addSuffix: false }) : 'now'}
                           </span>
                         </button>
                       </li>
@@ -174,7 +195,7 @@ const ChatDrawer = ({ open, onClose, initialConversationId, openSupport }: ChatD
                     <div className="flex justify-center pt-10">
                       <Loader2 className="animate-spin text-indigo-600" />
                     </div>
-                  ) : messages.length === 0 ? (
+                  ) : !messages || messages.length === 0 ? (
                     <p className="text-center text-xs text-slate-400 mt-10">
                       Send a message to start the conversation 👋
                     </p>
