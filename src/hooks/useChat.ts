@@ -28,39 +28,51 @@ export const useConversations = () => {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from("conversations")
-      .select("*")
-      .or(`participant_one.eq.${user.id},participant_two.eq.${user.id}`)
-      .order("updated_at", { ascending: false });
+    if (!user?.id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from("conversations")
+        .select("*")
+        .or(`participant_one.eq.${user.id},participant_two.eq.${user.id}`)
+        .order("updated_at", { ascending: false });
 
-    if (data) {
-      // Hydrate other-user profile
-      const otherIds = data.map(c =>
-        c.participant_one === user.id ? c.participant_two : c.participant_one
-      );
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, full_name, avatar_url")
-        .in("id", otherIds);
+      if (error) throw error;
 
-      const profileMap = new Map((profiles || []).map(p => [p.id, p]));
-      setConversations(
-        data.map(c => ({
-          ...c,
-          other_user: profileMap.get(
-            c.participant_one === user.id ? c.participant_two : c.participant_one
-          ),
-        }))
-      );
+      if (data && data.length > 0) {
+        const otherIds = data.map(c =>
+          c.participant_one === user.id ? c.participant_two : c.participant_one
+        );
+        
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, full_name, avatar_url")
+          .in("id", otherIds);
+
+        const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+        
+        setConversations(
+          data.map(c => ({
+            ...c,
+            other_user: profileMap.get(
+              c.participant_one === user.id ? c.participant_two : c.participant_one
+            ),
+          }))
+        );
+      } else {
+        setConversations([]);
+      }
+    } catch (err) {
+      console.error("Error loading conversations:", err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, [user]);
+  }, [user?.id]);
 
   useEffect(() => {
     load();
-    if (!user) return;
+    if (!user?.id) return;
+
     const channel = supabase
       .channel("conversations-list")
       .on(
@@ -69,10 +81,11 @@ export const useConversations = () => {
         () => load()
       )
       .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, load]);
+  }, [user?.id, load]);
 
   return { conversations, loading, reload: load };
 };
@@ -87,26 +100,41 @@ export const useMessages = (conversationId: string | null) => {
       setLoading(false);
       return;
     }
-    setLoading(true);
+
     const load = async () => {
-      const { data } = await supabase
+      setLoading(true);
+      const { data, error } = await supabase
         .from("messages")
         .select("*")
         .eq("conversation_id", conversationId)
         .order("created_at", { ascending: true });
-      setMessages(data || []);
+      
+      if (!error) setMessages(data || []);
       setLoading(false);
     };
+
     load();
 
     const channel = supabase
       .channel(`messages-${conversationId}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
-        (payload) => setMessages(prev => [...prev, payload.new as Message])
+        { 
+          event: "INSERT", 
+          schema: "public", 
+          table: "messages", 
+          filter: `conversation_id=eq.${conversationId}` 
+        },
+        (payload) => {
+          setMessages(prev => {
+            // Prevent duplicate messages if realtime and load fire at once
+            if (prev.find(m => m.id === payload.new.id)) return prev;
+            return [...prev, payload.new as Message];
+          });
+        }
       )
       .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
     };
@@ -129,15 +157,14 @@ export const startConversation = async (
   propertyId?: string,
   isSupport = false
 ): Promise<string | null> => {
-  // Try find existing
   const { data: existing } = await supabase
     .from("conversations")
     .select("id")
     .or(
       `and(participant_one.eq.${myId},participant_two.eq.${otherId}),and(participant_one.eq.${otherId},participant_two.eq.${myId})`
     )
-    .eq("property_id", propertyId || null)
     .maybeSingle();
+
   if (existing) return existing.id;
 
   const { data, error } = await supabase
@@ -150,10 +177,8 @@ export const startConversation = async (
     })
     .select("id")
     .single();
-  if (error) {
-    console.error("startConversation error:", error);
-    return null;
-  }
+
+  if (error) return null;
   return data.id;
 };
 
