@@ -6,9 +6,11 @@ import {
   Navigation,
   MapPin,
 } from "lucide-react";
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef, lazy, Suspense } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import PropertyMap from "@/components/PropertyMap";
+
+// ✅ Lazy load map (fix crash)
+const PropertyMap = lazy(() => import("@/components/PropertyMap"));
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -18,17 +20,15 @@ const Landing = () => {
 
   const featuredScrollRef = useRef<HTMLDivElement>(null);
 
-  // FETCH DATA (SAFE)
+  // ✅ FETCH DATA
   useEffect(() => {
     const fetchData = async () => {
       try {
         const { data, error } = await supabase.from("properties").select("*");
-        if (error) {
-          console.error("Supabase error:", error);
-        }
+        if (error) console.error(error);
         setProperties(data || []);
       } catch (err) {
-        console.error("Fetch error:", err);
+        console.error(err);
       } finally {
         setLoading(false);
       }
@@ -37,12 +37,12 @@ const Landing = () => {
     fetchData();
   }, []);
 
-  // FEATURED (SAFE)
+  // ✅ FEATURED
   const featured = useMemo(() => {
     return (properties || []).slice(0, 10);
   }, [properties]);
 
-  // SCROLL
+  // ✅ SCROLL
   const scrollFeatured = (dir: "left" | "right") => {
     if (!featuredScrollRef.current) return;
     featuredScrollRef.current.scrollBy({
@@ -73,10 +73,10 @@ const Landing = () => {
       {/* MAIN GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {/* LEFT */}
+        {/* LEFT SIDE */}
         <div className="lg:col-span-2 flex flex-col gap-8">
 
-          {/* SLIDER */}
+          {/* FEATURED SLIDER */}
           <div>
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-black">Featured Properties</h2>
@@ -129,7 +129,7 @@ const Landing = () => {
             </div>
           </div>
 
-          {/* GRID */}
+          {/* GRID BELOW */}
           <div>
             <h3 className="text-xl font-black mb-4">More Properties</h3>
 
@@ -166,30 +166,34 @@ const Landing = () => {
 
         </div>
 
-        {/* MAP */}
+        {/* RIGHT SIDE MAP */}
         <div className="hidden lg:block h-[520px] sticky top-4">
-          <div className="h-full rounded-xl overflow-hidden border shadow relative">
+          <div className="h-full rounded-xl overflow-hidden border border-slate-200 shadow-lg relative">
 
-            {/* SAFE MAP */}
-            {PropertyMap ? (
+            <Suspense
+              fallback={
+                <div className="flex items-center justify-center h-full text-gray-400 text-sm font-semibold">
+                  Loading Map...
+                </div>
+              }
+            >
               <PropertyMap
                 properties={(properties || []).filter(
-                  (p) => p?.latitude && p?.longitude
+                  (p) =>
+                    p &&
+                    typeof p.latitude === "number" &&
+                    typeof p.longitude === "number"
                 )}
                 userLocation={null}
-                onMarkerClick={(id: any) =>
-                  id && navigate(`/property/${id}`)
-                }
+                onMarkerClick={(id: string) => {
+                  if (id) navigate(`/property/${id}`);
+                }}
               />
-            ) : (
-              <div className="flex items-center justify-center h-full text-gray-400">
-                Map not available
-              </div>
-            )}
+            </Suspense>
 
             <button
               onClick={() => navigate("/near-me")}
-              className="absolute bottom-4 left-4 right-4 bg-white py-3 rounded-xl font-bold text-indigo-600"
+              className="absolute bottom-4 left-4 right-4 z-[400] bg-white/95 backdrop-blur py-3 rounded-xl font-black text-xs uppercase text-indigo-600 hover:bg-indigo-600 hover:text-white transition shadow-lg flex items-center justify-center gap-2"
             >
               <Navigation size={14} /> Open Full Map
             </button>

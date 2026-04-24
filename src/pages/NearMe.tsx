@@ -3,7 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, MapPin, Wifi, Tv, Utensils, Loader2, Navigation } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import PropertyMap from "@/components/PropertyMap";
+import { lazy, Suspense } from "react";
+
+const PropertyMap = lazy(() => import("@/components/PropertyMap"));
 import { sortByProximity, getUserLocation } from "@/lib/geo";
 import { toast } from "sonner";
 
