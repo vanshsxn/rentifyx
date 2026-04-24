@@ -4,42 +4,43 @@ import {
   ChevronLeft,
   ChevronRight,
   Navigation,
-  MapPin
+  MapPin,
 } from "lucide-react";
 import { useEffect, useState, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import PropertyMap from "@/components/PropertyMap";
-import { getUserLocation, sortByProximity } from "@/lib/geo";
 
 const Landing = () => {
   const navigate = useNavigate();
 
   const [properties, setProperties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userLoc, setUserLoc] = useState<any>(null);
 
   const featuredScrollRef = useRef<HTMLDivElement>(null);
 
-  // FETCH DATA
+  // FETCH DATA (SAFE)
   useEffect(() => {
-    supabase.from("properties").select("*").then(({ data }) => {
-      setProperties(data || []);
-      setLoading(false);
-    });
+    const fetchData = async () => {
+      try {
+        const { data, error } = await supabase.from("properties").select("*");
+        if (error) {
+          console.error("Supabase error:", error);
+        }
+        setProperties(data || []);
+      } catch (err) {
+        console.error("Fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
-  // USER LOCATION
-  useEffect(() => {
-    getUserLocation().then(setUserLoc).catch(() => {});
-  }, []);
-
-  // FEATURED LOGIC
+  // FEATURED (SAFE)
   const featured = useMemo(() => {
-    if (userLoc) {
-      return sortByProximity(properties, userLoc).slice(0, 10);
-    }
-    return properties.slice(0, 10);
-  }, [properties, userLoc]);
+    return (properties || []).slice(0, 10);
+  }, [properties]);
 
   // SCROLL
   const scrollFeatured = (dir: "left" | "right") => {
@@ -72,15 +73,13 @@ const Landing = () => {
       {/* MAIN GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {/* LEFT SIDE */}
+        {/* LEFT */}
         <div className="lg:col-span-2 flex flex-col gap-8">
 
-          {/* FEATURED SLIDER */}
+          {/* SLIDER */}
           <div>
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-black">
-                {userLoc ? "Closest to you" : "Featured Properties"}
-              </h2>
+              <h2 className="text-2xl font-black">Featured Properties</h2>
 
               <div className="flex gap-2">
                 <button
@@ -102,22 +101,27 @@ const Landing = () => {
               ref={featuredScrollRef}
               className="flex gap-4 overflow-x-auto pb-4"
             >
-              {featured.slice(0, 6).map((p) => (
+              {(featured || []).slice(0, 6).map((p) => (
                 <motion.div
-                  key={p.id}
+                  key={p?.id}
                   whileHover={{ y: -5 }}
-                  onClick={() => navigate(`/property/${p.id}`)}
+                  onClick={() => p?.id && navigate(`/property/${p.id}`)}
                   className="min-w-[260px] bg-white rounded-xl overflow-hidden shadow cursor-pointer"
                 >
                   <img
-                    src={p.image_url}
+                    src={
+                      p?.image_url ||
+                      "https://via.placeholder.com/400x300"
+                    }
                     className="h-40 w-full object-cover"
                   />
                   <div className="p-3">
-                    <h3 className="font-bold">{p.title}</h3>
-                    <p className="text-sm text-gray-500">{p.area}</p>
+                    <h3 className="font-bold">{p?.title || "No Title"}</h3>
+                    <p className="text-sm text-gray-500">
+                      {p?.area || "Unknown"}
+                    </p>
                     <p className="text-indigo-600 font-bold mt-1">
-                      ₹{p.rent}
+                      ₹{p?.rent || 0}
                     </p>
                   </div>
                 </motion.div>
@@ -125,31 +129,34 @@ const Landing = () => {
             </div>
           </div>
 
-          {/* GRID BELOW */}
+          {/* GRID */}
           <div>
-            <h3 className="text-xl font-black mb-4">
-              More Properties
-            </h3>
+            <h3 className="text-xl font-black mb-4">More Properties</h3>
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {properties.slice(6, 18).map((p) => (
+              {(properties || []).slice(6, 18).map((p) => (
                 <motion.div
-                  key={p.id}
+                  key={p?.id}
                   whileHover={{ y: -4 }}
-                  onClick={() => navigate(`/property/${p.id}`)}
+                  onClick={() => p?.id && navigate(`/property/${p.id}`)}
                   className="bg-white rounded-xl overflow-hidden shadow cursor-pointer"
                 >
                   <img
-                    src={p.image_url}
+                    src={
+                      p?.image_url ||
+                      "https://via.placeholder.com/400x300"
+                    }
                     className="h-32 w-full object-cover"
                   />
                   <div className="p-2">
                     <h4 className="font-bold text-sm truncate">
-                      {p.title}
+                      {p?.title || "No Title"}
                     </h4>
-                    <p className="text-xs text-gray-500">{p.area}</p>
+                    <p className="text-xs text-gray-500">
+                      {p?.area || "Unknown"}
+                    </p>
                     <p className="text-indigo-600 font-bold text-sm">
-                      ₹{p.rent}
+                      ₹{p?.rent || 0}
                     </p>
                   </div>
                 </motion.div>
@@ -159,17 +166,26 @@ const Landing = () => {
 
         </div>
 
-        {/* RIGHT SIDE MAP */}
+        {/* MAP */}
         <div className="hidden lg:block h-[520px] sticky top-4">
           <div className="h-full rounded-xl overflow-hidden border shadow relative">
 
-            <PropertyMap
-              properties={properties.filter(
-                (p) => p.latitude && p.longitude
-              )}
-              userLocation={userLoc}
-              onMarkerClick={(id) => navigate(`/property/${id}`)}
-            />
+            {/* SAFE MAP */}
+            {PropertyMap ? (
+              <PropertyMap
+                properties={(properties || []).filter(
+                  (p) => p?.latitude && p?.longitude
+                )}
+                userLocation={null}
+                onMarkerClick={(id: any) =>
+                  id && navigate(`/property/${id}`)
+                }
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-400">
+                Map not available
+              </div>
+            )}
 
             <button
               onClick={() => navigate("/near-me")}
