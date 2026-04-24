@@ -1,52 +1,50 @@
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  ChevronLeft,
-  ChevronRight,
-  Navigation,
-  MapPin,
+  ArrowRight, MapPin, Wallet, Home, Users, Search,
+  PanelLeftClose, PanelLeft, ChevronLeft, ChevronRight,
+  Navigation, Bed, Bath
 } from "lucide-react";
-import { useEffect, useState, useMemo, useRef, lazy, Suspense } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-
-// ✅ Lazy load map (fix crash)
-const PropertyMap = lazy(() => import("@/components/PropertyMap"));
+import { useAuth } from "@/contexts/AuthContext";
+import CubeLoader from "@/components/CubeLoader";
+import PropertyMap from "@/components/PropertyMap";
+import { sortByProximity, getUserLocation } from "@/lib/geo";
 
 const Landing = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [properties, setProperties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [userLoc, setUserLoc] = useState<any>(null);
 
   const featuredScrollRef = useRef<HTMLDivElement>(null);
 
-  // ✅ FETCH DATA
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const { data, error } = await supabase.from("properties").select("*");
-        if (error) console.error(error);
-        setProperties(data || []);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+    supabase.from("properties").select("*").then(({ data }) => {
+      setProperties(data || []);
+      setLoading(false);
+    });
   }, []);
 
-  // ✅ FEATURED
-  const featured = useMemo(() => {
-    return (properties || []).slice(0, 10);
-  }, [properties]);
+  useEffect(() => {
+    getUserLocation().then(setUserLoc).catch(() => {});
+  }, []);
 
-  // ✅ SCROLL
+  const featured = useMemo(() => {
+    if (userLoc) {
+      return sortByProximity(properties, userLoc).slice(0, 8);
+    }
+    return properties.slice(0, 8);
+  }, [properties, userLoc]);
+
   const scrollFeatured = (dir: "left" | "right") => {
     if (!featuredScrollRef.current) return;
     featuredScrollRef.current.scrollBy({
-      left: dir === "left" ? -320 : 320,
+      left: dir === "left" ? -300 : 300,
       behavior: "smooth",
     });
   };
@@ -54,154 +52,141 @@ const Landing = () => {
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center">
-        Loading...
+        <CubeLoader />
       </div>
     );
   }
 
   return (
-    <div className="bg-[#F8F9FB] min-h-screen p-6">
+    <div className="flex h-screen bg-[#F8F9FB]">
 
-      {/* HEADER */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center">
-          <MapPin className="text-white w-5 h-5" />
-        </div>
-        <h1 className="text-2xl font-black">RentifyX</h1>
-      </div>
-
-      {/* MAIN GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        {/* LEFT SIDE */}
-        <div className="lg:col-span-2 flex flex-col gap-8">
-
-          {/* FEATURED SLIDER */}
-          <div>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-black">Featured Properties</h2>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => scrollFeatured("left")}
-                  className="p-2 bg-white rounded-xl border"
-                >
-                  <ChevronLeft />
-                </button>
-                <button
-                  onClick={() => scrollFeatured("right")}
-                  className="p-2 bg-white rounded-xl border"
-                >
-                  <ChevronRight />
-                </button>
-              </div>
+      {/* SIDEBAR */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.aside
+            initial={{ width: 0 }}
+            animate={{ width: 260 }}
+            exit={{ width: 0 }}
+            className="hidden lg:flex flex-col bg-white border-r p-5"
+          >
+            <div className="flex justify-between mb-6">
+              <span className="font-black text-xl">RentifyX</span>
+              <button onClick={() => setSidebarOpen(false)}>
+                <PanelLeftClose />
+              </button>
             </div>
+          </motion.aside>
+        )}
+      </AnimatePresence>
 
-            <div
-              ref={featuredScrollRef}
-              className="flex gap-4 overflow-x-auto pb-4"
-            >
-              {(featured || []).slice(0, 6).map((p) => (
-                <motion.div
-                  key={p?.id}
-                  whileHover={{ y: -5 }}
-                  onClick={() => p?.id && navigate(`/property/${p.id}`)}
-                  className="min-w-[260px] bg-white rounded-xl overflow-hidden shadow cursor-pointer"
-                >
-                  <img
-                    src={
-                      p?.image_url ||
-                      "https://via.placeholder.com/400x300"
-                    }
-                    className="h-40 w-full object-cover"
-                  />
-                  <div className="p-3">
-                    <h3 className="font-bold">{p?.title || "No Title"}</h3>
-                    <p className="text-sm text-gray-500">
-                      {p?.area || "Unknown"}
-                    </p>
-                    <p className="text-indigo-600 font-bold mt-1">
-                      ₹{p?.rent || 0}
-                    </p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
+      <main className="flex-1 flex flex-col overflow-hidden">
 
-          {/* GRID BELOW */}
-          <div>
-            <h3 className="text-xl font-black mb-4">More Properties</h3>
-
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {(properties || []).slice(6, 18).map((p) => (
-                <motion.div
-                  key={p?.id}
-                  whileHover={{ y: -4 }}
-                  onClick={() => p?.id && navigate(`/property/${p.id}`)}
-                  className="bg-white rounded-xl overflow-hidden shadow cursor-pointer"
-                >
-                  <img
-                    src={
-                      p?.image_url ||
-                      "https://via.placeholder.com/400x300"
-                    }
-                    className="h-32 w-full object-cover"
-                  />
-                  <div className="p-2">
-                    <h4 className="font-bold text-sm truncate">
-                      {p?.title || "No Title"}
-                    </h4>
-                    <p className="text-xs text-gray-500">
-                      {p?.area || "Unknown"}
-                    </p>
-                    <p className="text-indigo-600 font-bold text-sm">
-                      ₹{p?.rent || 0}
-                    </p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-
-        </div>
-
-        {/* RIGHT SIDE MAP */}
-        <div className="hidden lg:block h-[520px] sticky top-4">
-          <div className="h-full rounded-xl overflow-hidden border border-slate-200 shadow-lg relative">
-
-            <Suspense
-              fallback={
-                <div className="flex items-center justify-center h-full text-gray-400 text-sm font-semibold">
-                  Loading Map...
-                </div>
-              }
-            >
-              <PropertyMap
-                properties={(properties || []).filter(
-                  (p) =>
-                    p &&
-                    typeof p.latitude === "number" &&
-                    typeof p.longitude === "number"
-                )}
-                userLocation={null}
-                onMarkerClick={(id: string) => {
-                  if (id) navigate(`/property/${id}`);
-                }}
-              />
-            </Suspense>
-
-            <button
-              onClick={() => navigate("/near-me")}
-              className="absolute bottom-4 left-4 right-4 z-[400] bg-white/95 backdrop-blur py-3 rounded-xl font-black text-xs uppercase text-indigo-600 hover:bg-indigo-600 hover:text-white transition shadow-lg flex items-center justify-center gap-2"
-            >
-              <Navigation size={14} /> Open Full Map
+        {/* TOPBAR */}
+        <div className="h-16 flex items-center justify-between px-6 bg-white border-b">
+          {!sidebarOpen && (
+            <button onClick={() => setSidebarOpen(true)}>
+              <PanelLeft />
             </button>
-
+          )}
+          <div className="flex items-center gap-2">
+            <Search />
+            <input placeholder="Search..." className="outline-none text-sm" />
           </div>
         </div>
 
-      </div>
+        <div className="flex-1 overflow-y-auto p-6">
+
+          {/* FEATURED + MAP */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            {/* LEFT SIDE */}
+            <div className="lg:col-span-2 flex flex-col gap-6">
+
+              {/* HORIZONTAL SLIDER */}
+              <div>
+                <div className="flex justify-between mb-4">
+                  <h2 className="text-2xl font-black">
+                    {userLoc ? "Closest to you" : "Featured"}
+                  </h2>
+
+                  <div className="flex gap-2">
+                    <button onClick={() => scrollFeatured("left")}>
+                      <ChevronLeft />
+                    </button>
+                    <button onClick={() => scrollFeatured("right")}>
+                      <ChevronRight />
+                    </button>
+                  </div>
+                </div>
+
+                <div
+                  ref={featuredScrollRef}
+                  className="flex gap-4 overflow-x-auto"
+                >
+                  {featured.map((p) => (
+                    <div
+                      key={p.id}
+                      onClick={() => navigate(`/property/${p.id}`)}
+                      className="min-w-[250px] bg-white rounded-xl shadow cursor-pointer"
+                    >
+                      <img
+                        src={p.image_url}
+                        className="h-40 w-full object-cover rounded-t-xl"
+                      />
+                      <div className="p-3">
+                        <p className="font-bold text-sm">{p.title}</p>
+                        <p className="text-xs text-gray-400">{p.area}</p>
+                        <p className="text-indigo-600 font-bold">
+                          ₹{p.rent}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* VERTICAL SCROLL GRID */}
+              <div>
+                <h3 className="text-xl font-black mb-3">
+                  More Properties
+                </h3>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-h-[400px] overflow-y-auto">
+                  {properties.map((p) => (
+                    <div
+                      key={p.id}
+                      onClick={() => navigate(`/property/${p.id}`)}
+                      className="bg-white rounded-xl p-3 cursor-pointer shadow-sm"
+                    >
+                      <img
+                        src={p.image_url}
+                        className="h-28 w-full object-cover rounded"
+                      />
+                      <p className="text-xs font-bold mt-1">{p.title}</p>
+                      <p className="text-[10px] text-gray-400">{p.area}</p>
+                      <p className="text-indigo-600 text-xs font-bold">
+                        ₹{p.rent}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+
+            {/* RIGHT SIDE MAP */}
+            <div className="hidden lg:block h-[500px] sticky top-0">
+              <PropertyMap
+                properties={properties} // ✅ IMPORTANT FIX
+                userLocation={userLoc}
+                onMarkerClick={(id) => navigate(`/property/${id}`)}
+              />
+            </div>
+
+          </div>
+
+        </div>
+      </main>
     </div>
   );
 };
