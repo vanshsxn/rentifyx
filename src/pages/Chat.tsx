@@ -53,18 +53,26 @@ const Chat = () => {
 
     // If linking from property detail with a specific user, ensure conversation exists
     if (targetUserId && targetUserId !== user.id) {
-      const { data: existing } = await supabase
+      const { data: existing, error: existingError } = await supabase
         .from("conversations")
         .select("*")
         .or(`and(participant_one.eq.${user.id},participant_two.eq.${targetUserId}),and(participant_one.eq.${targetUserId},participant_two.eq.${user.id})`)
         .maybeSingle();
 
+      if (existingError) {
+        console.error("Error finding chat:", existingError);
+      }
+
       if (!existing) {
-        await supabase.from("conversations").insert({
+        const { error: insertError } = await supabase.from("conversations").insert({
           participant_one: user.id,
           participant_two: targetUserId,
           property_id: propertyId,
         });
+        if (insertError) {
+          toast.error("Could not create chat. RLS/Schema mismatch.");
+          console.error("Chat insert failed:", insertError);
+        }
       }
     }
     await loadConversations();
@@ -81,23 +89,33 @@ const Chat = () => {
 
     if (!convs) return;
 
-    // Fetch profiles + property titles
+    // Fetch profiles + property titles Safely (handling schema cache errors)
     const otherIds = convs.map((c) => (c.participant_one === user.id ? c.participant_two : c.participant_one));
     const propIds = convs.map((c) => c.property_id).filter(Boolean) as string[];
 
-    const [{ data: profiles }, { data: props }] = await Promise.all([
-      supabase.from("profiles").select("id, full_name, email").in("id", otherIds),
-      propIds.length ? supabase.from("properties").select("id, title").in("id", propIds) : Promise.resolve({ data: [] as any[] }),
-    ]);
+    let profilesCheck = [];
+    try {
+      const { data: pData, error: pError } = await supabase.from("profiles").select("id, full_name, email").in("id", otherIds);
+      if (pError) console.error("Profiles fetch error (likely full_name cache):", pError);
+      profilesCheck = pData || [];
+    } catch (e: any) {
+      console.warn("Ignoring profile errors:", e);
+    }
+
+    let propsCheck = [];
+    if (propIds.length > 0) {
+      const { data: prData } = await supabase.from("properties").select("id, title").in("id", propIds);
+      propsCheck = prData || [];
+    }
 
     const enriched: Conversation[] = convs.map((c) => {
       const otherId = c.participant_one === user.id ? c.participant_two : c.participant_one;
-      const profile = profiles?.find((p) => p.id === otherId);
-      const property = props?.find((p) => p.id === c.property_id);
+      const profile = profilesCheck.find((p: any) => p.id === otherId);
+      const property = propsCheck.find((p: any) => p.id === c.property_id);
       return {
         ...c,
-        other_name: profile?.full_name || profile?.email || "User",
-        property_title: property?.title,
+        other_name: (profile as any)?.full_name || (profile as any)?.email || "User",
+        property_title: (property as any)?.title,
       };
     });
 

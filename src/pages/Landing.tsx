@@ -130,8 +130,7 @@ const Landing = () => {
   };
 
   const handleBrowse = () => {
-    if (isLoggedIn && (userRole === "tenant" || userRole === "admin")) navigate("/tenant");
-    else navigate("/properties");
+    navigate("/properties");
   };
 
   // --- UPDATED REDIRECT LOGIC ---
