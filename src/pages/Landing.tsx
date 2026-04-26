@@ -1,27 +1,15 @@
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  ArrowRight,
-  Sparkles,
-  Star,
-  MapPin,
-  Wallet,
-  Siren,
-  TrendingDown,
-  X,
-  Zap,
-  IndianRupee,
-  LayoutDashboard,
-  LogIn,
-  Shield,
-  Award,
-  ArrowDownNarrowWide
+  ArrowRight, Sparkles, Star, MapPin, Wallet, Siren, TrendingDown, 
+  X, Zap, IndianRupee, LayoutDashboard, LogIn, Shield, Award, 
+  ArrowDownNarrowWide, CheckCircle2, Lock, Clock
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import PropertyMap, { MapMarkerData } from "@/components/PropertyMap";
-import { EmergencyBadge } from "@/components/StatusBadges";
+
 interface DBProperty {
   id: string;
   title: string;
@@ -46,6 +34,7 @@ const Landing = () => {
   const [ratings, setRatings] = useState<Record<string, { avg: number; count: number }>>({});
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  
   const [emergencyOnly, setEmergencyOnly] = useState<boolean>(
     () => typeof window !== "undefined" && localStorage.getItem("featured_emergency_only") === "1"
   );
@@ -56,6 +45,7 @@ const Landing = () => {
   useEffect(() => {
     localStorage.setItem("featured_emergency_only", emergencyOnly ? "1" : "0");
   }, [emergencyOnly]);
+  
   useEffect(() => {
     localStorage.setItem("featured_sort", sortBy);
   }, [sortBy]);
@@ -64,58 +54,29 @@ const Landing = () => {
   const [tempBudget, setTempBudget] = useState("");
 
   useEffect(() => {
-    checkUser();
-    getFeatured();
-    getMapped();
-    getRatings();
+    const init = async () => {
+      await checkUser();
+      await getFeatured();
+      await getMapped();
+      await getRatings();
+    };
+    init();
   }, []);
 
   const checkUser = async () => {
-    try {
-      const { data: { session }, error: sessionError } = await (supabase.auth as any).getSession();
-
-      if (sessionError) throw sessionError;
-
-      if (session?.user) {
-        setIsLoggedIn(true);
-        
-        const { data: roleData, error: roleError } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", session.user.id)
-          .maybeSingle();
-
-        if (roleData?.role === "admin") {
-          setUserRole("admin");
-        } else if (roleData?.role === "landlord") {
-          setUserRole("landlord");
-        } else {
-          setUserRole("tenant");
-        }
-      } else {
-        setIsLoggedIn(false);
-        setUserRole(null);
-      }
-    } catch (error) {
-      console.error("Auth error:", error);
-      setIsLoggedIn(false);
+    const { data: { session } } = await (supabase.auth as any).getSession();
+    if (session?.user) {
+      setIsLoggedIn(true);
+      const { data } = await supabase.from("user_roles").select("role").eq("user_id", session.user.id).maybeSingle();
+      setUserRole(data?.role || "tenant");
     }
   };
 
   const getFeatured = async () => {
-    let { data, error } = await supabase
-      .from("properties")
-      .select("*")
-      .eq("is_featured", true)
-      .limit(6);
-
-    if (error || !data || data.length === 0) {
-      const { data: topRated } = await supabase
-        .from("properties")
-        .select("*")
-        .order("rating", { ascending: false })
-        .limit(6);
-      setList(topRated || []);
+    const { data } = await supabase.from("properties").select("*").eq("is_featured", true).limit(6);
+    if (!data || data.length === 0) {
+      const { data: top } = await supabase.from("properties").select("*").order("rating", { ascending: false }).limit(6);
+      setList(top || []);
     } else {
       setList(data);
     }
@@ -123,316 +84,123 @@ const Landing = () => {
   };
 
   const getMapped = async () => {
-    const { data } = await supabase
-      .from("properties")
-      .select("id, title, address, area, rent, rating, image_url, tags, has_vr, latitude, longitude, is_emergency")
-      .not("latitude", "is", null)
-      .not("longitude", "is", null)
-      .limit(50);
-    setMapProps((data as any) || []);
+    const { data } = await supabase.from("properties").select("*").not("latitude", "is", null).limit(50);
+    setMapProps(data || []);
   };
 
   const getRatings = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("property_ratings")
-        .select("property_id, rating");
-      
-      if (error) throw error;
-
-      const map: Record<string, { sum: number; count: number }> = {};
-      (data || []).forEach((r: any) => {
-        if (!map[r.property_id]) map[r.property_id] = { sum: 0, count: 0 };
-        map[r.property_id].sum += Number(r.rating) || 0;
-        map[r.property_id].count += 1;
-      });
-
-      const agg: Record<string, { avg: number; count: number }> = {};
-      Object.entries(map).forEach(([k, v]) => {
-        agg[k] = { avg: v.count > 0 ? v.sum / v.count : 0, count: v.count };
-      });
-      setRatings(agg);
-    } catch (err) {
-      console.error("Ratings fetch error:", err);
-    }
+    const { data } = await supabase.from("property_ratings").select("property_id, rating");
+    const map: Record<string, { sum: number; count: number }> = {};
+    (data || []).forEach((r) => {
+      if (!map[r.property_id]) map[r.property_id] = { sum: 0, count: 0 };
+      map[r.property_id].sum += Number(r.rating);
+      map[r.property_id].count += 1;
+    });
+    const agg: Record<string, { avg: number; count: number }> = {};
+    Object.entries(map).forEach(([k, v]) => agg[k] = { avg: v.sum / v.count, count: v.count });
+    setRatings(agg);
   };
 
   const liveRating = (p: DBProperty) => {
     const r = ratings[p.id];
-    if (r && r.count > 0) return r.avg.toFixed(1);
-    if (p.rating && p.rating > 0) return Number(p.rating).toFixed(1);
-    return "0.0";
+    return r ? r.avg.toFixed(1) : (p.rating || 0).toFixed(1);
   };
-
-  const handleBudgetOptimization = () => {
-    if (!tempBudget) return toast.error("Enter a budget!");
-    setShowBudgetModal(false);
-    navigate(`/tenant?maxRent=${tempBudget}&optimize=true`);
-  };
-
-  const handleBrowse = () => {
-    if (isLoggedIn && (userRole === "tenant" || userRole === "admin")) navigate("/tenant");
-    else navigate("/properties");
-  };
-
-  const handleDashboardRedirect = () => {
-    if (!isLoggedIn) {
-      navigate("/auth");
-      return;
-    }
-
-    if (userRole === "admin") {
-      navigate("/admin");
-    } else if (userRole === "landlord") {
-      navigate("/landlord");
-    } else {
-      navigate("/tenant");
-    }
-  };
-
-  const filters = [
-    { i: Wallet, l: "Budget PGs", d: "Smart Optimizer", a: () => setShowBudgetModal(true) },
-    { i: Siren, l: "Emergency", d: "Book instantly", a: () => navigate("/tenant?emergency=true") },
-    { i: MapPin, l: "Near Me", d: "On the map", a: () => navigate("/near-me") },
-    { i: TrendingDown, l: "Best Deals", d: "Most amenities", a: () => navigate("/tenant?sort=bestdeal") },
-  ];
 
   return (
-    <div className="min-h-screen bg-background flex flex-col font-sans selection:bg-primary selection:text-white">
-      
+    <div className="min-h-screen bg-background flex flex-col font-sans">
       <AnimatePresence>
         {showBudgetModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center px-6">
-            <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setShowBudgetModal(false)}
-              className="absolute inset-0 bg-slate-950/80 backdrop-blur-md"
-            />
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative w-full max-w-md bg-card border border-border p-10 rounded-[3rem] shadow-2xl overflow-hidden"
-            >
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent" />
-              <button onClick={() => setShowBudgetModal(false)} className="absolute top-6 right-6 p-2 hover:bg-secondary rounded-full transition-colors">
-                <X className="w-5 h-5 text-muted-foreground" />
-              </button>
-
+            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={() => setShowBudgetModal(false)} />
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative w-full max-w-md bg-card border border-border p-10 rounded-[3rem] shadow-2xl">
               <div className="text-center space-y-6">
-                <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto">
-                  <Zap className="w-8 h-8 text-primary fill-primary" />
-                </div>
-                
-                <div className="space-y-2">
-                  <h2 className="text-2xl font-black uppercase tracking-tighter italic">AI Budget Matcher</h2>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase leading-relaxed">
-                    Analyzing market data to find your <br /> perfect high-value match.
-                  </p>
-                </div>
-
-                <div className="relative">
-                  <IndianRupee className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
-                  <input 
-                    autoFocus
-                    type="number" 
-                    placeholder="Enter Total Budget..." 
-                    className="w-full bg-secondary border-none rounded-2xl py-5 pl-12 pr-6 text-sm font-black focus:ring-2 focus:ring-primary/20 transition-all uppercase"
-                    value={tempBudget}
-                    onChange={(e) => setTempBudget(e.target.value)}
-                  />
-                </div>
-
-                <button 
-                  onClick={handleBudgetOptimization}
-                  className="w-full py-5 bg-foreground text-background rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-primary hover:text-white transition-all shadow-xl active:scale-95"
-                >
-                  Optimize Selection <ArrowRight className="inline w-4 h-4 ml-2" />
-                </button>
+                <h2 className="text-2xl font-black uppercase italic">AI Budget Matcher</h2>
+                <input 
+                  type="number" placeholder="Enter Budget..." 
+                  className="w-full bg-secondary rounded-2xl py-5 px-6 text-sm font-black"
+                  value={tempBudget} onChange={(e) => setTempBudget(e.target.value)}
+                />
+                <button onClick={() => navigate(`/tenant?maxRent=${tempBudget}`)} className="w-full py-5 bg-foreground text-background rounded-2xl font-black uppercase">Optimize Selection</button>
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
-      {/* Hero Section */}
-      <section className="relative min-h-[75vh] flex items-center justify-center px-4 pt-16 pb-24 overflow-hidden bg-slate-950">
-        <video 
-          autoPlay 
-          loop 
-          muted 
-          playsInline 
-          className="absolute inset-0 w-full h-full object-cover z-0 opacity-60"
-        >
-          <source src="/hero-video.mp4" type="video/mp4" />
-        </video>
-
-        <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/40 to-background z-[1]" />
-        
-        <div className="text-center max-w-3xl mx-auto space-y-8 relative z-10">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 text-white text-[10px] font-bold uppercase tracking-[0.2em]">
-              <Sparkles className="w-3 h-3 text-primary" /> Premium Rental Experience
-            </div>
-            <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-white leading-[1.1]">
-              FIND RENT <br />
-              <span className="text-primary italic">RELAX.</span>
-            </h1>
-          </motion.div>
-
-          <motion.div className="flex flex-col sm:flex-row items-center justify-center gap-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
-            <button onClick={handleBrowse} className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-primary text-primary-foreground text-[12px] font-bold uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-primary/20">
-              Browse Listings <ArrowRight className="w-4 h-4" />
-            </button>
-            
-            <button onClick={handleDashboardRedirect} className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 text-white text-[12px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all">
-              {isLoggedIn ? (
-                <>
-                  {userRole === 'admin' ? <Shield className="w-4 h-4 text-primary" /> : <LayoutDashboard className="w-4 h-4" />}
-                  {userRole === 'admin' ? "Admin Hub" : userRole === 'landlord' ? "Landlord Hub" : "Tenant Hub"}
-                </>
-              ) : (
-                <>
-                  <LogIn className="w-4 h-4" /> Login
-                </>
-              )}
-            </button>
-          </motion.div>
+      <section className="relative min-h-[60vh] flex items-center justify-center bg-slate-950 text-center px-4">
+        <div className="relative z-10 space-y-6">
+          <h1 className="text-6xl font-black text-white tracking-tighter uppercase">Find Rent <span className="text-primary italic">Relax.</span></h1>
+          <div className="flex gap-4 justify-center">
+            <button onClick={() => navigate("/properties")} className="bg-primary text-white px-8 py-4 rounded-2xl font-bold uppercase tracking-widest">Browse All</button>
+          </div>
         </div>
       </section>
 
-      {/* Floating Filter Cards */}
-      <div className="container max-w-5xl mx-auto px-4 -mt-16 relative z-30">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {filters.map((f) => (
+      <main className="container max-w-6xl mx-auto px-4 py-20">
+        <div className="flex justify-between items-end mb-12 border-b pb-6">
+          <h2 className="text-3xl font-black uppercase">Featured Units</h2>
+          <div className="flex gap-2">
             <button 
-              key={f.l} 
-              onClick={f.a} 
-              className="bg-card/90 backdrop-blur-2xl border border-border/50 rounded-[2rem] p-6 text-center space-y-3 hover:border-primary/50 hover:-translate-y-1 transition-all group shadow-xl"
+              onClick={() => setEmergencyOnly(!emergencyOnly)}
+              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase border ${emergencyOnly ? 'bg-red-600 text-white' : 'bg-card'}`}
             >
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto group-hover:bg-primary transition-colors">
-                <f.i className="w-6 h-6 text-primary group-hover:text-primary-foreground transition-colors" />
-              </div>
-              <div>
-                <h3 className="text-[11px] font-bold uppercase tracking-tight">{f.l}</h3>
-                <p className="text-[10px] text-muted-foreground opacity-70">{f.d}</p>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Marketplace Section */}
-      <main className="container max-w-6xl mx-auto px-4 py-20 space-y-10">
-        <div className="flex flex-col md:flex-row justify-between items-end gap-4 border-b border-border/50 pb-8">
-          <div className="space-y-1">
-            <div className="flex items-center gap-3 flex-wrap">
-              <h2 className="text-3xl font-black tracking-tight uppercase">Featured Units</h2>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest">
-                <Award className="w-3 h-3" /> {list.length}
-              </span>
-            </div>
-            <p className="text-[10px] text-primary font-bold uppercase tracking-[0.3em]">High-Performance Living</p>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="relative">
-              <ArrowDownNarrowWide className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="pl-9 pr-3 py-2.5 rounded-xl bg-card border border-border text-[10px] font-black uppercase tracking-widest cursor-pointer hover:border-primary/50 transition-all"
-              >
-                <option value="default">Sort: Default</option>
-                <option value="price-asc">Price: Low → High</option>
-                <option value="price-desc">Price: High → Low</option>
-                <option value="rating">Rating</option>
-              </select>
-            </div>
-            <button
-              onClick={() => setEmergencyOnly((v) => !v)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
-                emergencyOnly
-                  ? "bg-red-500 text-white border-red-500 shadow-md"
-                  : "bg-card text-muted-foreground border-border hover:border-red-500/50"
-              }`}
-            >
-              <Siren className="w-3.5 h-3.5" /> Emergency Only
+              Emergency Only
             </button>
           </div>
         </div>
 
-        {loading ? (
-          <div className="h-64 flex flex-col items-center justify-center gap-3">
-             <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-[1fr,280px] gap-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {(() => {
-                let arr = emergencyOnly ? list.filter((p) => p.is_emergency) : [...list];
-                if (sortBy === "price-asc") arr.sort((a, b) => a.rent - b.rent);
-                else if (sortBy === "price-desc") arr.sort((a, b) => b.rent - a.rent);
-                else if (sortBy === "rating") arr.sort((a, b) => {
-                  const rA = Number(liveRating(a));
-                  const rB = Number(liveRating(b));
-                  return rB - rA;
-                });
-                return arr;
-              })().map((p, i) => (
-                <motion.div key={p.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="group cursor-pointer space-y-4" onClick={() => navigate(`/property/${p.id}`)}>
-                  <div className="relative aspect-[4/3] rounded-[2rem] overflow-hidden shadow-md group-hover:shadow-xl transition-all duration-500">
-                    <img src={p.image_url || "/placeholder.svg"} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={p.title} />
-                    <div className="absolute top-4 left-4 flex flex-col gap-1.5 items-start">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-primary text-primary-foreground text-[9px] font-black uppercase tracking-widest shadow-md">
-                        <Award className="w-3 h-3" /> Featured
-                      </span>
-                      {p.is_emergency && <EmergencyBadge />}
+        <div className="grid grid-cols-1 md:grid-cols-[1fr,300px] gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {list
+              .filter(p => !emergencyOnly || p.is_emergency)
+              .map((p) => (
+                <div key={p.id} onClick={() => navigate(`/property/${p.id}`)} className="group cursor-pointer space-y-3">
+                  <div className="relative aspect-video rounded-[2rem] overflow-hidden bg-muted">
+                    <img src={p.image_url || "/placeholder.svg"} className="w-full h-full object-cover" alt={p.title} />
+                    
+                    {/* INLINED BADGE LOGIC - ZERO IMPORTS */}
+                    <div className="absolute top-4 left-4 flex flex-col gap-2">
+                      {p.is_emergency && (
+                        <div className="inline-flex items-center gap-1 bg-red-600 text-white px-2 py-1 rounded-md shadow-lg animate-pulse">
+                          <Siren size={12} strokeWidth={3} />
+                          <span className="text-[9px] font-black uppercase">Emergency</span>
+                        </div>
+                      )}
                     </div>
-                    <div className="absolute top-4 right-4 bg-background/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[11px] font-bold text-primary">₹{p.rent.toLocaleString()}</div>
                   </div>
-                  <div className="px-2 space-y-1">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-lg font-bold tracking-tight group-hover:text-primary transition-colors">{p.title}</h3>
-                      <div className="flex items-center gap-1 text-orange-500 text-[10px] font-bold" title={ratings[p.id]?.count ? `${ratings[p.id].count} review(s)` : "No reviews yet"}>
+                  
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-bold uppercase">{p.title}</h3>
+                      <p className="text-[10px] text-muted-foreground uppercase">{p.address}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-black text-primary">₹{p.rent.toLocaleString()}</p>
+                      <div className="flex items-center gap-1 text-orange-500 text-[10px] font-bold justify-end">
                         <Star className="w-3 h-3 fill-current" /> {liveRating(p)}
                       </div>
                     </div>
-                    <p className="text-[10px] text-muted-foreground font-medium uppercase flex items-center gap-1.5"><MapPin className="w-3 h-3 text-primary/60" /> {p.address}</p>
                   </div>
-                </motion.div>
-              ))}
-            </div>
-            <aside className="md:sticky md:top-24 self-start space-y-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-[9px] font-black uppercase tracking-[0.25em] flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-primary" /> Live Map
-                </h3>
-                <span className="text-[9px] font-bold text-muted-foreground uppercase">{mapProps.length} pins</span>
-              </div>
-              <PropertyMap
-                height="320px"
-                markers={mapProps.map((p) => ({
-                  id: p.id,
-                  lat: p.latitude!,
-                  lng: p.longitude!,
-                  title: p.title,
-                  rent: p.rent,
-                  isEmergency: p.is_emergency,
-                  onClick: () => navigate(`/property/${p.id}`),
-                  detailHref: `/property/${p.id}`,
-                })) as MapMarkerData[]}
-              />
-              {mapProps.length === 0 && (
-                <p className="text-[10px] font-bold uppercase text-muted-foreground text-center py-2">No mapped properties yet — landlords can add coordinates.</p>
-              )}
-            </aside>
+                </div>
+            ))}
           </div>
-        )}
-      </main>
 
-      <footer className="py-12 border-t border-border/50 text-center">
-        <p className="text-[9px] font-bold uppercase tracking-[0.4em] text-muted-foreground/30">© 2026 Made by MV Studios Japan</p>
-      </footer>
+          <aside className="space-y-4">
+            <h3 className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-primary" /> Live Map
+            </h3>
+            <div className="rounded-2xl overflow-hidden border border-border h-[400px]">
+              <PropertyMap 
+                height="100%"
+                markers={mapProps.map(p => ({
+                  id: p.id, lat: p.latitude!, lng: p.longitude!, title: p.title, rent: p.rent,
+                  isEmergency: p.is_emergency, onClick: () => navigate(`/property/${p.id}`)
+                }))}
+              />
+            </div>
+          </aside>
+        </div>
+      </main>
     </div>
   );
 };
