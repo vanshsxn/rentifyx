@@ -1,4 +1,3 @@
-import "leaflet/dist/leaflet.css";
 import { useState, useEffect, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -18,50 +17,24 @@ const ProfileDashboard = lazy(() => import("@/pages/Profile"));
 const Landing = lazy(() => import("@/pages/Landing"));
 const Properties = lazy(() => import("@/pages/Properties"));
 const PropertyDetail = lazy(() => import("@/pages/PropertyDetail"));
-const Furnished = lazy(() => import("@/pages/Furnished"));
-const Shared = lazy(() => import("@/pages/Shared"));
 const TenantDashboard = lazy(() => import("@/pages/TenantDashboard"));
 const LandlordDashboard = lazy(() => import("@/pages/LandlordDashboard"));
 const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
 const Auth = lazy(() => import("@/pages/Auth"));
 const Layout = lazy(() => import("@/components/Layout"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
+const Chat = lazy(() => import("@/pages/Chat"));
+const Visits = lazy(() => import("@/pages/Visits"));
 const NearMe = lazy(() => import("@/pages/NearMe"));
+const Compare = lazy(() => import("@/pages/Compare"));
+const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 
 const queryClient = new QueryClient();
 
-const CubeLoader = lazy(() => import("@/components/CubeLoader"));
-
 const PageLoader = () => (
   <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
-    <div className="cube-container-inline">
-      <div className="cube-holder-inline"><div className="cube-box-inline" /></div>
-      <div className="cube-holder-inline"><div className="cube-box-inline" /></div>
-      <div className="cube-holder-inline"><div className="cube-box-inline" /></div>
-    </div>
-    <style>{`
-      .cube-container-inline { transform-style:preserve-3d; perspective:2000px; transform:rotateX(-30deg) rotateY(-45deg); position:relative; width:3em; height:3em; }
-      .cube-holder-inline { position:absolute; top:50%; left:50%; transform-style:preserve-3d; transform:translate3d(0,3em,1.5em); }
-      .cube-holder-inline:last-child { transform:rotateY(-90deg) rotateX(90deg) translate3d(0,3em,1.5em); }
-      .cube-holder-inline:first-child { transform:rotateZ(-90deg) rotateX(-90deg) translate3d(0,3em,1.5em); }
-      .cube-holder-inline:nth-child(1) .cube-box-inline { background-color:#1FBCD3; }
-      .cube-holder-inline:nth-child(1) .cube-box-inline::before { background-color:#0e8a9e; }
-      .cube-holder-inline:nth-child(1) .cube-box-inline::after { background-color:#14a3b8; }
-      .cube-holder-inline:nth-child(2) .cube-box-inline { background-color:#CBE2B4; }
-      .cube-holder-inline:nth-child(2) .cube-box-inline::before { background-color:#9cc476; }
-      .cube-holder-inline:nth-child(2) .cube-box-inline::after { background-color:#b3d395; }
-      .cube-holder-inline:nth-child(3) .cube-box-inline { background-color:#F6B6CA; }
-      .cube-holder-inline:nth-child(3) .cube-box-inline::before { background-color:#e87da0; }
-      .cube-holder-inline:nth-child(3) .cube-box-inline::after { background-color:#ef99b5; }
-      .cube-box-inline { position:absolute; top:50%; left:50%; transform-style:preserve-3d; animation:ani-cube-box-inline 6s infinite; width:3em; height:3em; }
-      .cube-box-inline::before,.cube-box-inline::after { position:absolute; width:100%; height:100%; content:""; }
-      .cube-box-inline::before { left:100%; bottom:0; transform:rotateY(90deg); transform-origin:0 50%; }
-      .cube-box-inline::after { left:0; bottom:100%; transform:rotateX(90deg); transform-origin:0 100%; }
-      @keyframes ani-cube-box-inline {
-        8.33%{transform:translate3d(-50%,-50%,0) scaleZ(2)} 16.7%{transform:translate3d(-50%,-50%,-3em) scaleZ(1)} 25%{transform:translate3d(-50%,-100%,-3em) scaleY(2)} 33.3%{transform:translate3d(-50%,-150%,-3em) scaleY(1)} 41.7%{transform:translate3d(-100%,-150%,-3em) scaleX(2)} 50%{transform:translate3d(-150%,-150%,-3em) scaleX(1)} 58.3%{transform:translate3d(-150%,-150%,0) scaleZ(2)} 66.7%{transform:translate3d(-150%,-150%,0) scaleZ(1)} 75%{transform:translate3d(-150%,-100%,0) scaleY(2)} 83.3%{transform:translate3d(-150%,-50%,0) scaleY(1)} 91.7%{transform:translate3d(-100%,-50%,0) scaleX(2)} 100%{transform:translate3d(-50%,-50%,0) scaleX(1)}
-      }
-    `}</style>
-    <p className="text-sm font-medium text-muted-foreground animate-pulse mt-8">Loading RentifyX...</p>
+    <Loader2 className="w-10 h-10 text-primary animate-spin opacity-80" />
+    <p className="text-sm font-medium text-muted-foreground animate-pulse">Loading RentHelp...</p>
   </div>
 );
 
@@ -85,11 +58,28 @@ const AppContent = () => {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/properties" element={<Properties />} />
-        <Route path="/furnished" element={<Furnished />} />
-        <Route path="/shared" element={<Shared />} />
         <Route path="/property/:id" element={<PropertyDetail />} />
-        <Route path="/near-me" element={<NearMe />} />
         <Route path="/auth" element={<Auth />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/near-me" element={<Layout role={role} onRoleChange={setRole}><NearMe /></Layout>} />
+        <Route path="/compare" element={<Layout role={role} onRoleChange={setRole}><Compare /></Layout>} />
+        <Route
+          path="/chat"
+          element={
+            <ProtectedRoute>
+              <Layout role={role} onRoleChange={setRole}><Chat /></Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/visits"
+          element={
+            <ProtectedRoute>
+              <Layout role={role} onRoleChange={setRole}><Visits /></Layout>
+            </ProtectedRoute>
+          }
+        />
+        
         {/* --- 2. ADD THE PROFILE ROUTE HERE --- */}
         <Route
           path="/profile"
