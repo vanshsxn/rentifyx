@@ -10,7 +10,7 @@ interface AuthContextType {
   loading: boolean;
   userRole: AppRole;
   signOut: () => Promise<void>;
-  refreshRole: () => Promise<void>; // Added to manually trigger a refresh
+  refreshRole: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -30,62 +30,72 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<AppRole>("tenant");
 
-  const fetchRole = async (userId: string, currentUser?: User | null) => {
+  // Background sync for the role
+  const syncRoleFromDB = async (userId: string) => {
     try {
-      // 1. Try fetching from the user_roles table
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", userId)
-        .maybeSingle(); // maybeSingle is safer than .single()
+        .maybeSingle();
 
       if (data?.role) {
         setUserRole(data.role as AppRole);
-        return;
-      }
-
-      // 2. Fallback: Check Auth Metadata if database row is missing
-      const roleFromMeta = currentUser?.user_metadata?.role || user?.user_metadata?.role;
-      if (roleFromMeta) {
-        setUserRole(roleFromMeta as AppRole);
-      } else {
-        setUserRole("tenant");
       }
     } catch (err) {
-      console.error("Role fetch error:", err);
-      setUserRole("tenant");
+      console.error("Silent role sync failed:", err);
     }
   };
 
   const refreshRole = async () => {
-    if (user) await fetchRole(user.id, user);
+    if (user) await syncRoleFromDB(user.id);
   };
 
   useEffect(() => {
-    // Initial Session Check
+    // 1. Initial Load: Check session quickly
     const initAuth = async () => {
-      const { data: { session: initialSession } } = await supabase.auth.getSession();
-      setSession(initialSession);
-      setUser(initialSession?.user ?? null);
-      
-      if (initialSession?.user) {
-        await fetchRole(initialSession.user.id, initialSession.user);
+      try {
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        
+        if (initialSession) {
+          setSession(initialSession);
+          setUser(initialSession.user);
+          
+          // SPEED FIX: Immediately use metadata if available
+          const metaRole = initialSession.user.user_metadata?.role;
+          if (metaRole) setUserRole(metaRole as AppRole);
+          
+          // Sync DB in background (don't 'await' it)
+          syncRoleFromDB(initialSession.user.id);
+        }
+      } catch (error) {
+        console.error("Auth init error:", error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     initAuth();
 
-    // Listen for changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, currentSession) => {
+    // 2. Auth State Listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, currentSession) => {
       setSession(currentSession);
-      setUser(currentSession?.user ?? null);
+      const currentUser = currentSession?.user ?? null;
+      setUser(currentUser);
       
-      if (currentSession?.user) {
-        await fetchRole(currentSession.user.id, currentSession.user);
+      if (currentUser) {
+        // SPEED FIX: Trust metadata first for instant UI response
+        const metaRole = currentUser.user_metadata?.role;
+        if (metaRole) {
+          setUserRole(metaRole as AppRole);
+        }
+        
+        // Sync with DB in background
+        syncRoleFromDB(currentUser.id);
       } else {
         setUserRole("tenant");
       }
+      
       setLoading(false);
     });
 
@@ -93,10 +103,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setUserRole("tenant");
-    setUser(null);
-    setSession(null);
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      setSession(null);
+      setUserRole("tenant");
+    } catch (error) {
+      console.error("Signout error:", error);
+    }
   };
 
   return (
