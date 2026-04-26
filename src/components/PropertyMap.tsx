@@ -236,26 +236,33 @@ export const LocationPicker = ({
 
   return (
     <div className="space-y-2">
-      <form onSubmit={searchLocation} className="flex items-center gap-2">
+      <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                searchLocation(e as any);
+              }
+            }}
             placeholder="Search address..."
             className="w-full pl-9 pr-3 py-2 rounded-lg bg-secondary border border-border text-[11px] font-bold"
           />
         </div>
         <button
-          type="submit"
+          type="button"
+          onClick={searchLocation}
           disabled={searching || !query.trim()}
           className="px-3 py-2 rounded-lg bg-foreground text-background text-[10px] font-black uppercase flex items-center gap-1.5"
         >
           {searching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
           Search
         </button>
-      </form>
+      </div>
       
       <div className="rounded-2xl overflow-hidden border border-border" style={{ height }}>
         <MapContainer
