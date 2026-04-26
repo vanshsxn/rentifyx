@@ -132,7 +132,7 @@ const NearMe = () => {
         ...p, 
         dist: distanceKm(userLoc, { lat: p.latitude!, lng: p.longitude! }) 
       }))
-      .filter((p) => p.dist <= radius)
+      .filter((p) => radius === 500 ? true : p.dist <= radius)
       .sort((a, b) => a.dist - b.dist);
   }, [props, userLoc, radius, filter, availOnly]);
 
@@ -186,7 +186,7 @@ const NearMe = () => {
     setSearchingLandmark(true);
     toast.loading("Locating landmark...", { id: "landmark" });
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(landmarkSearch)}`);
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=in&q=${encodeURIComponent(landmarkSearch)}`);
       const json = await res.json();
       if (json && json[0]) {
         setUserLoc({ lat: parseFloat(json[0].lat), lng: parseFloat(json[0].lon) });
@@ -224,13 +224,13 @@ const NearMe = () => {
         <div className="flex flex-wrap items-center gap-2">
           {userLoc && (
             <div className="flex items-center gap-3 bg-secondary/30 border border-border rounded-xl px-4 py-2">
-              <span className="text-[10px] font-black uppercase text-muted-foreground">Range:</span>
+              <span className="text-[10px] font-black uppercase text-muted-foreground shrink-0">Range:</span>
               <input 
-                type="range" min={1} max={50} value={radius} 
+                type="range" min={1} max={500} value={radius} 
                 onChange={(e) => setRadius(+e.target.value)} 
                 className="accent-primary w-24 h-1.5 rounded-lg appearance-none bg-border" 
               />
-              <span className="text-xs font-black w-10">{radius}km</span>
+              <span className="text-xs font-black w-10 text-right">{radius === 500 ? "ALL" : `${radius}km`}</span>
             </div>
           )}
           <button 
@@ -332,9 +332,9 @@ const NearMe = () => {
                   <p className="text-lg font-black text-primary mt-1">₹{p.rent.toLocaleString()}<span className="text-[10px] text-muted-foreground font-normal">/mo</span></p>
                 </div>
                 {userLoc && p.dist !== undefined && (
-                  <div className="text-right bg-secondary/50 px-2 py-1.5 rounded-lg border border-border">
-                    <span className="block text-[8px] font-black uppercase text-muted-foreground mb-0.5">Distance</span>
-                    <span className="text-xs font-black">{p.dist.toFixed(1)} km</span>
+                  <div className="text-right bg-primary/10 px-3 py-2 rounded-xl border-2 border-primary/40 shadow-sm shadow-primary/20 shrink-0">
+                    <span className="block text-[9px] font-black uppercase text-primary/80 mb-0.5 tracking-widest leading-none">Away</span>
+                    <span className="text-sm font-black text-primary leading-none">{p.dist.toFixed(1)} km</span>
                   </div>
                 )}
               </div>
