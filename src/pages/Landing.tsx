@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import PropertyMap, { MapMarkerData } from "@/components/PropertyMap";
 import { EmergencyBadge } from "@/components/StatusBadges";
+
 interface DBProperty {
   id: string;
   title: string;
@@ -79,11 +80,12 @@ const Landing = () => {
       if (session?.user) {
         setIsLoggedIn(true);
         
-        const { data: roleData, error: roleError } = await supabase
+        // Check for Admin Role specifically
+        const { data: roleData } = await supabase
           .from("user_roles")
           .select("role")
           .eq("user_id", session.user.id)
-          .maybeSingle();
+          .single();
 
         if (roleData?.role === "admin") {
           setUserRole("admin");
@@ -133,35 +135,25 @@ const Landing = () => {
   };
 
   const getRatings = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("property_ratings")
-        .select("property_id, rating");
-      
-      if (error) throw error;
-
-      const map: Record<string, { sum: number; count: number }> = {};
-      (data || []).forEach((r: any) => {
-        if (!map[r.property_id]) map[r.property_id] = { sum: 0, count: 0 };
-        map[r.property_id].sum += Number(r.rating) || 0;
-        map[r.property_id].count += 1;
-      });
-
-      const agg: Record<string, { avg: number; count: number }> = {};
-      Object.entries(map).forEach(([k, v]) => {
-        agg[k] = { avg: v.count > 0 ? v.sum / v.count : 0, count: v.count };
-      });
-      setRatings(agg);
-    } catch (err) {
-      console.error("Ratings fetch error:", err);
-    }
+    const { data } = await supabase.from("property_ratings").select("property_id, rating");
+    const map: Record<string, { sum: number; count: number }> = {};
+    (data || []).forEach((r: any) => {
+      if (!map[r.property_id]) map[r.property_id] = { sum: 0, count: 0 };
+      map[r.property_id].sum += Number(r.rating) || 0;
+      map[r.property_id].count += 1;
+    });
+    const agg: Record<string, { avg: number; count: number }> = {};
+    Object.entries(map).forEach(([k, v]) => {
+      agg[k] = { avg: v.count > 0 ? v.sum / v.count : 0, count: v.count };
+    });
+    setRatings(agg);
   };
 
   const liveRating = (p: DBProperty) => {
     const r = ratings[p.id];
     if (r && r.count > 0) return r.avg.toFixed(1);
     if (p.rating && p.rating > 0) return Number(p.rating).toFixed(1);
-    return "0.0";
+    return "—";
   };
 
   const handleBudgetOptimization = () => {
@@ -175,6 +167,7 @@ const Landing = () => {
     else navigate("/properties");
   };
 
+  // --- UPDATED REDIRECT LOGIC ---
   const handleDashboardRedirect = () => {
     if (!isLoggedIn) {
       navigate("/auth");
@@ -372,11 +365,7 @@ const Landing = () => {
                 let arr = emergencyOnly ? list.filter((p) => p.is_emergency) : [...list];
                 if (sortBy === "price-asc") arr.sort((a, b) => a.rent - b.rent);
                 else if (sortBy === "price-desc") arr.sort((a, b) => b.rent - a.rent);
-                else if (sortBy === "rating") arr.sort((a, b) => {
-                  const rA = Number(liveRating(a));
-                  const rB = Number(liveRating(b));
-                  return rB - rA;
-                });
+                else if (sortBy === "rating") arr.sort((a, b) => (b.rating || 0) - (a.rating || 0));
                 return arr;
               })().map((p, i) => (
                 <motion.div key={p.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="group cursor-pointer space-y-4" onClick={() => navigate(`/property/${p.id}`)}>
@@ -386,7 +375,7 @@ const Landing = () => {
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-primary text-primary-foreground text-[9px] font-black uppercase tracking-widest shadow-md">
                         <Award className="w-3 h-3" /> Featured
                       </span>
-                      {p.is_emergency && <EmergencyBadge />}
+                      {p.is_emergency && <EmergencyBadge size="md" />}
                     </div>
                     <div className="absolute top-4 right-4 bg-background/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[11px] font-bold text-primary">₹{p.rent.toLocaleString()}</div>
                   </div>
