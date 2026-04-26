@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   Building2, Trash2, X, Plus, Loader2, Edit3, Sparkles, Zap, Droplets, Wifi, 
   Car, Shield, Wind, Dumbbell, User, Settings, LogOut, ChevronDown, Star, 
-  Phone, Mail, MapPin, Maximize, Siren
+  Phone, Mail, MapPin, Maximize, Siren, MessageSquare
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -194,8 +194,11 @@ const LandlordDashboard = () => {
           <button onClick={() => { resetForm(); setShowForm(true); }} className="px-8 py-4 rounded-2xl bg-foreground text-background text-[11px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all shadow-xl flex items-center gap-2">
             <Plus className="w-4 h-4" /> Add Listing
           </button>
+          <button onClick={() => navigate("/chat")} className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center hover:bg-primary/20 hover:text-primary transition-colors border border-border/50 text-muted-foreground mr-2 relative group">
+            <MessageSquare className="w-6 h-6 group-hover:scale-110 transition-transform" />
+          </button>
           <div className="relative">
-            <button onClick={() => setShowUserMenu(!showUserMenu)} className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center hover:bg-border transition-colors border border-border/50">
+            <button onClick={() => setShowUserMenu(!showUserMenu)} className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center hover:bg-border transition-colors border border-border/50 text-muted-foreground">
               <User className="w-6 h-6" />
             </button>
             <AnimatePresence>

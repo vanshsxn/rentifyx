@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import PropertyMap, { MapMarkerData } from "@/components/PropertyMap";
 import { EmergencyBadge } from "@/components/StatusBadges";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface DBProperty {
   id: string;
@@ -45,8 +46,8 @@ const Landing = () => {
   const [loading, setLoading] = useState(true);
   const [mapProps, setMapProps] = useState<DBProperty[]>([]);
   const [ratings, setRatings] = useState<Record<string, { avg: number; count: number }>>({});
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { user, userRole } = useAuth();
+  const isLoggedIn = !!user;
   const [emergencyOnly, setEmergencyOnly] = useState<boolean>(
     () => typeof window !== "undefined" && localStorage.getItem("featured_emergency_only") === "1"
   );
@@ -65,44 +66,10 @@ const Landing = () => {
   const [tempBudget, setTempBudget] = useState("");
 
   useEffect(() => {
-    checkUser();
     getFeatured();
     getMapped();
     getRatings();
   }, []);
-
-  const checkUser = async () => {
-    try {
-      const { data: { session }, error: sessionError } = await (supabase.auth as any).getSession();
-
-      if (sessionError) throw sessionError;
-
-      if (session?.user) {
-        setIsLoggedIn(true);
-        
-        // Check for Admin Role specifically
-        const { data: roleData } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", session.user.id)
-          .single();
-
-        if (roleData?.role === "admin") {
-          setUserRole("admin");
-        } else if (roleData?.role === "landlord") {
-          setUserRole("landlord");
-        } else {
-          setUserRole("tenant");
-        }
-      } else {
-        setIsLoggedIn(false);
-        setUserRole(null);
-      }
-    } catch (error) {
-      console.error("Auth error:", error);
-      setIsLoggedIn(false);
-    }
-  };
 
   const getFeatured = async () => {
     let { data, error } = await supabase
@@ -187,7 +154,7 @@ const Landing = () => {
     { i: Wallet, l: "Budget PGs", d: "Smart Optimizer", a: () => setShowBudgetModal(true) },
     { i: Siren, l: "Emergency", d: "Book instantly", a: () => navigate("/tenant?emergency=true") },
     { i: MapPin, l: "Near Me", d: "On the map", a: () => navigate("/near-me") },
-    { i: TrendingDown, l: "Best Deals", d: "Most amenities", a: () => navigate("/tenant?sort=bestdeal") },
+    { i: ArrowDownNarrowWide, l: "Compare Now", d: "Side-by-side specs", a: () => navigate("/compare") },
   ];
 
   return (

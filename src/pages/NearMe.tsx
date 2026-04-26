@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import PropertyMap, { MapMarkerData } from "@/components/PropertyMap";
 import { useNavigate } from "react-router-dom";
-import { MapPin, Navigation, Loader2, Star, Siren, Building2, CheckCircle2, ExternalLink } from "lucide-react";
+import { MapPin, Navigation, Loader2, Star, Siren, Building2, CheckCircle2, ExternalLink, Search } from "lucide-react";
 import { toast } from "sonner";
 import { EmergencyBadge, AvailabilityPill } from "@/components/StatusBadges";
 
@@ -35,6 +35,8 @@ const NearMe = () => {
   const [ratings, setRatings] = useState<Record<string, { avg: number; count: number }>>({});
   const [loading, setLoading] = useState(true);
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
+  const [landmarkSearch, setLandmarkSearch] = useState("");
+  const [searchingLandmark, setSearchingLandmark] = useState(false);
   
   const [radius, setRadius] = useState<number>(() => {
     const saved = typeof window !== "undefined" ? localStorage.getItem("nearme_radius") : null;
@@ -65,7 +67,7 @@ const NearMe = () => {
           .from("properties")
           .select("id, title, address, area, rent, rating, image_url, latitude, longitude, is_emergency, availability_status");
         
-        setProps((propData || []) as Prop[]);
+        setProps((propData as any || []) as Prop[]);
 
         const { data: ratingRows } = await supabase.from("property_ratings").select("property_id, rating");
         const map: Record<string, { sum: number; count: number }> = {};
@@ -134,27 +136,6 @@ const NearMe = () => {
       .sort((a, b) => a.dist - b.dist);
   }, [props, userLoc, radius, filter, availOnly]);
 
-  // Map marker data generation
-  const markers: MapMarkerData[] = useMemo(() => filtered.map((p) => ({
-    id: p.id,
-    lat: p.latitude!,
-    lng: p.longitude!,
-    title: p.title,
-    rent: p.rent,
-    isEmergency: p.is_emergency,
-    onClick: () => navigate(`/property/${p.id}`),
-    detailHref: `/property/${p.id}`,
-  })), [filtered, navigate]);
-
-  // Properties without valid coordinates
-  const unmapped = useMemo(() => {
-    let base = props.filter((p) => !p.latitude || !p.longitude);
-    if (filter === "emergency") base = base.filter((p) => p.is_emergency);
-    else if (filter === "normal") base = base.filter((p) => !p.is_emergency);
-    if (availOnly) base = base.filter((p) => (p.availability_status || "available") === "available");
-    return base;
-  }, [props, filter, availOnly]);
-
   // Official routing URLs for Apple Maps and Google Maps
   const getMapsUrl = (p: Prop) => {
     const isIOS = typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
@@ -170,11 +151,54 @@ const NearMe = () => {
       : `https://www.google.com/maps/search/?api=1&query=${p.latitude},${p.longitude}`;
   };
 
+  // Map marker data generation
+  const markers: MapMarkerData[] = useMemo(() => filtered.map((p) => ({
+    id: p.id,
+    lat: p.latitude!,
+    lng: p.longitude!,
+    title: p.title,
+    rent: p.rent,
+    isEmergency: p.is_emergency,
+    onClick: () => window.open(getMapsUrl(p), '_blank'),
+    detailHref: `/property/${p.id}`,
+  })), [filtered, userLoc]);
+
+  // Properties without valid coordinates
+  const unmapped = useMemo(() => {
+    let base = props.filter((p) => !p.latitude || !p.longitude);
+    if (filter === "emergency") base = base.filter((p) => p.is_emergency);
+    else if (filter === "normal") base = base.filter((p) => !p.is_emergency);
+    if (availOnly) base = base.filter((p) => (p.availability_status || "available") === "available");
+    return base;
+  }, [props, filter, availOnly]);
+
+
   const getRating = (p: Prop) => {
     const r = ratings[p.id];
     if (r && r.count > 0) return r.avg.toFixed(1);
     if (p.rating && p.rating > 0) return Number(p.rating).toFixed(1);
     return "—";
+  };
+
+  const handleLandmarkSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!landmarkSearch.trim()) return;
+    setSearchingLandmark(true);
+    toast.loading("Locating landmark...", { id: "landmark" });
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(landmarkSearch)}`);
+      const json = await res.json();
+      if (json && json[0]) {
+        setUserLoc({ lat: parseFloat(json[0].lat), lng: parseFloat(json[0].lon) });
+        toast.success("Landmark targeted. Calculating shortest paths...", { id: "landmark" });
+      } else {
+        toast.error("Landmark not found.", { id: "landmark" });
+      }
+    } catch {
+      toast.error("Failed to fetch location.", { id: "landmark" });
+    } finally {
+      setSearchingLandmark(false);
+    }
   };
 
   if (loading) {
@@ -247,6 +271,28 @@ const NearMe = () => {
           <CheckCircle2 className="w-4 h-4" /> Available Only
         </button>
       </section>
+
+      {/* Landmark Search Bar */}
+      <form onSubmit={handleLandmarkSearch} className="flex items-center gap-2 mt-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Search Landmark (e.g. Graphic Era) to calculate shortest distance..."
+            value={landmarkSearch}
+            onChange={(e) => setLandmarkSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 rounded-xl bg-card border border-border text-xs font-bold shadow-sm focus:ring-2 focus:ring-primary/20 outline-none"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={searchingLandmark || !landmarkSearch.trim()}
+          className="px-6 py-3 rounded-xl bg-foreground text-background text-[10px] font-black uppercase flex items-center gap-2 transition-all hover:bg-primary hover:text-white disabled:opacity-50"
+        >
+          {searchingLandmark ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
+          Target
+        </button>
+      </form>
 
       <div className="rounded-2xl overflow-hidden border border-border shadow-sm bg-card relative z-0">
         <PropertyMap markers={markers} userLocation={userLoc} height="500px" />
