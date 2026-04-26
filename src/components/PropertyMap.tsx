@@ -17,6 +17,8 @@ const defaultIcon = L.icon({
   popupAnchor: [1, -34],
   shadowSize: [41, 41],
 });
+
+// Setting default icon for the entire application to prevent missing markers
 L.Marker.prototype.options.icon = defaultIcon;
 
 const emergencyIcon = L.divIcon({
@@ -46,18 +48,28 @@ interface PropertyMapProps {
   userLocation?: { lat: number; lng: number } | null;
 }
 
+// Internal component to handle camera movement
 const FitBounds = ({ markers, userLocation }: { markers: MapMarkerData[]; userLocation?: { lat: number; lng: number } | null }) => {
   const map = useMap();
+  
   useEffect(() => {
-    const points: [number, number][] = markers.map((m) => [m.lat, m.lng]);
+    if (!map) return;
+    
+    const points: [number, number][] = markers
+      .filter(m => m.lat && m.lng)
+      .map((m) => [m.lat, m.lng]);
+      
     if (userLocation) points.push([userLocation.lat, userLocation.lng]);
+    
     if (points.length === 0) return;
+    
     if (points.length === 1) {
       map.setView(points[0], 14);
     } else {
       map.fitBounds(points as L.LatLngBoundsExpression, { padding: [40, 40] });
     }
   }, [markers, userLocation, map]);
+  
   return null;
 };
 
@@ -66,53 +78,68 @@ const PropertyMap = ({ markers, center, zoom = 12, height = "400px", className =
 
   return (
     <div className={`rounded-2xl overflow-hidden border border-border ${className}`} style={{ height }}>
-      <MapContainer center={defaultCenter} zoom={zoom} style={{ height: "100%", width: "100%" }} scrollWheelZoom>
+      <MapContainer 
+        center={defaultCenter} 
+        zoom={zoom} 
+        style={{ height: "100%", width: "100%" }} 
+        scrollWheelZoom
+      >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        
         <MarkerClusterGroup chunkedLoading maxClusterRadius={50} showCoverageOnHover={false}>
-        {markers.map((m) => (
-          <Marker
-            key={m.id}
-            position={[m.lat, m.lng]}
-            icon={m.isEmergency ? emergencyIcon : defaultIcon}
-            eventHandlers={{ click: () => m.onClick?.() }}
-          >
-            <Tooltip direction="top" offset={[0, -32]} opacity={0.95} permanent={false}>
-              <span style={{ fontWeight: 800, fontSize: 11 }}>{m.title}</span>
-              {m.rent !== undefined && <span style={{ color: "#3b82f6", fontWeight: 800, marginLeft: 6 }}>₹{m.rent.toLocaleString()}</span>}
-            </Tooltip>
-            <Popup>
-              <div className="text-xs">
-                <p className="font-bold">{m.title}</p>
-                {m.rent !== undefined && <p className="text-primary font-bold">₹{m.rent.toLocaleString()}/mo</p>}
-                {m.isEmergency && <p className="text-red-500 font-bold mt-1">⚡ Emergency Booking</p>}
-                {m.detailHref && (
-                  <a
-                    href={m.detailHref}
-                    style={{
-                      display: "inline-block",
-                      marginTop: 6,
-                      padding: "4px 10px",
-                      background: "#3b82f6",
-                      color: "white",
-                      borderRadius: 6,
-                      fontWeight: 800,
-                      fontSize: 10,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.1em",
-                      textDecoration: "none",
-                    }}
-                  >
-                    View listing →
-                  </a>
+          {markers.map((m) => (
+            <Marker
+              key={m.id}
+              position={[m.lat, m.lng]}
+              icon={m.isEmergency ? emergencyIcon : defaultIcon}
+              eventHandlers={{ 
+                click: () => {
+                  if (m.onClick) m.onClick();
+                }
+              }}
+            >
+              <Tooltip direction="top" offset={[0, -32]} opacity={0.95}>
+                <span style={{ fontWeight: 800, fontSize: 11 }}>{m.title}</span>
+                {m.rent !== undefined && (
+                  <span style={{ color: "#3b82f6", fontWeight: 800, marginLeft: 6 }}>
+                    ₹{m.rent.toLocaleString()}
+                  </span>
                 )}
-              </div>
-            </Popup>
-          </Marker>
-        ))}
+              </Tooltip>
+              <Popup>
+                <div className="text-xs">
+                  <p className="font-bold">{m.title}</p>
+                  {m.rent !== undefined && <p className="text-primary font-bold">₹{m.rent.toLocaleString()}/mo</p>}
+                  {m.isEmergency && <p className="text-red-500 font-bold mt-1">⚡ Emergency Booking</p>}
+                  {m.detailHref && (
+                    <a
+                      href={m.detailHref}
+                      style={{
+                        display: "inline-block",
+                        marginTop: 6,
+                        padding: "4px 10px",
+                        background: "#3b82f6",
+                        color: "white",
+                        borderRadius: 6,
+                        fontWeight: 800,
+                        fontSize: 10,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.1em",
+                        textDecoration: "none",
+                      }}
+                    >
+                      View listing →
+                    </a>
+                  )}
+                </div>
+              </Popup>
+            </Marker>
+          ))}
         </MarkerClusterGroup>
+
         {userLocation && (
           <Marker
             position={[userLocation.lat, userLocation.lng]}
@@ -126,13 +153,14 @@ const PropertyMap = ({ markers, center, zoom = 12, height = "400px", className =
             <Popup>You are here</Popup>
           </Marker>
         )}
+        
         <FitBounds markers={markers} userLocation={userLocation} />
       </MapContainer>
     </div>
   );
 };
 
-// Picker variant: lets landlord click on map to set coordinates
+// Picker variant logic
 const ClickHandler = ({ onPick }: { onPick: (lat: number, lng: number) => void }) => {
   useMapEvents({
     click(e) {
@@ -174,15 +202,10 @@ export const LocationPicker = ({
       },
       (err) => {
         setLocating(false);
-        const msg =
-          err.code === err.PERMISSION_DENIED
-            ? "Location permission denied. Allow it in your browser, or click the map to pin manually."
-            : err.code === err.POSITION_UNAVAILABLE
-            ? "Location unavailable. Try searching or click the map."
-            : "Could not get your location. Try searching or click the map.";
+        const msg = err.code === 1 ? "Permission denied." : "Location error.";
         toast.error(msg);
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      { enableHighAccuracy: true, timeout: 10000 }
     );
   };
 
@@ -195,17 +218,17 @@ export const LocationPicker = ({
         `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`
       );
       const json = await res.json();
-      if (Array.isArray(json) && json.length > 0) {
+      if (json && json[0]) {
         const lat0 = parseFloat(json[0].lat);
         const lng0 = parseFloat(json[0].lon);
         onChange(lat0, lng0);
         mapRef.current?.setView([lat0, lng0], 15);
         toast.success("Location found");
       } else {
-        toast.error("No results found for that search");
+        toast.error("No results found");
       }
     } catch {
-      toast.error("Search failed. Try again.");
+      toast.error("Search failed.");
     } finally {
       setSearching(false);
     }
@@ -220,25 +243,25 @@ export const LocationPicker = ({
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search address, area, city…"
-            className="w-full pl-9 pr-3 py-2 rounded-lg bg-secondary border border-border text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-primary/20"
+            placeholder="Search address..."
+            className="w-full pl-9 pr-3 py-2 rounded-lg bg-secondary border border-border text-[11px] font-bold"
           />
         </div>
         <button
           type="submit"
           disabled={searching || !query.trim()}
-          className="px-3 py-2 rounded-lg bg-foreground text-background text-[10px] font-black uppercase tracking-widest disabled:opacity-50 flex items-center gap-1.5"
+          className="px-3 py-2 rounded-lg bg-foreground text-background text-[10px] font-black uppercase flex items-center gap-1.5"
         >
           {searching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
           Search
         </button>
       </form>
+      
       <div className="rounded-2xl overflow-hidden border border-border" style={{ height }}>
         <MapContainer
           center={center}
           zoom={lat && lng ? 14 : 11}
           style={{ height: "100%", width: "100%" }}
-          scrollWheelZoom
           ref={(m) => { if (m) mapRef.current = m; }}
         >
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OSM' />
@@ -246,15 +269,16 @@ export const LocationPicker = ({
           {lat && lng && <Marker position={[lat, lng]} icon={defaultIcon} />}
         </MapContainer>
       </div>
+
       <div className="flex items-center justify-between text-[10px] font-bold uppercase">
         <span className="text-muted-foreground">
-          {lat && lng ? `📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}` : "Click on map to set location"}
+          {lat && lng ? `📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}` : "Click map to pin"}
         </span>
         <button
           type="button"
           onClick={useMyLocation}
           disabled={locating}
-          className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-[10px] font-black uppercase tracking-wider disabled:opacity-60 flex items-center gap-1.5"
+          className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground flex items-center gap-1.5"
         >
           {locating ? <Loader2 className="w-3 h-3 animate-spin" /> : <LocateFixed className="w-3 h-3" />}
           {locating ? "Locating…" : "Use My Location"}
