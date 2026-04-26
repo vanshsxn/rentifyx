@@ -21,6 +21,7 @@ const LandlordDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const availableTags = [
     { id: "WiFi", icon: Wifi },
@@ -53,6 +54,17 @@ const LandlordDashboard = () => {
       .eq("landlord_id", user.id)
       .order("created_at", { ascending: false });
     if (!error) setProperties(data || []);
+    
+    // Unread logic
+    const { data: convs } = await supabase.from("conversations").select("id").or(`participant_one.eq.${user.id},participant_two.eq.${user.id}`);
+    if (convs && convs.length > 0) {
+      const { count } = await supabase.from("messages").select("*", { count: "exact", head: true })
+        .in("conversation_id", convs.map(c => c.id))
+        .neq("sender_id", user.id)
+        .is("read_at", null);
+      if (count) setUnreadCount(count);
+    }
+    
     setLoading(false);
   };
 
@@ -196,6 +208,7 @@ const LandlordDashboard = () => {
           </button>
           <button onClick={() => navigate("/chat")} className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center hover:bg-primary/20 hover:text-primary transition-colors border border-border/50 text-muted-foreground mr-2 relative group">
             <MessageSquare className="w-6 h-6 group-hover:scale-110 transition-transform" />
+            {unreadCount > 0 && <span className="absolute -top-2 -right-2 bg-green-500 text-white text-[10px] font-black w-6 h-6 rounded-full flex items-center justify-center shadow-md border-2 border-background">{unreadCount}</span>}
           </button>
           <div className="relative">
             <button onClick={() => setShowUserMenu(!showUserMenu)} className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center hover:bg-border transition-colors border border-border/50 text-muted-foreground">

@@ -1,4 +1,4 @@
-import { useParams, useNavigate, Link } from "react-router-dom";import { useState, useEffect } from "react";import { supabase } from "@/integrations/supabase/client";import { useAuth } from "@/contexts/AuthContext";import {ArrowLeft, Star, MapPin, Bed, Bath, Maximize,Phone, MessageCircle, CalendarDays, Share2,Heart, Sparkles, Building2, Loader2, X, ArrowRight, CheckCircle2} from "lucide-react";import { motion, AnimatePresence } from "framer-motion";import { toast } from "sonner";
+import { useParams, useNavigate, Link } from "react-router-dom";import { useState, useEffect } from "react";import { supabase } from "@/integrations/supabase/client";import { useAuth } from "@/contexts/AuthContext";import {ArrowLeft, Star, MapPin, Bed, Bath, Maximize,Phone, MessageCircle, CalendarDays, Share2,Heart, Sparkles, Building2, Loader2, X, ArrowRight, CheckCircle2, Navigation} from "lucide-react";import { motion, AnimatePresence } from "framer-motion";import { toast } from "sonner";
 import ScheduleVisitDialog from "@/components/ScheduleVisitDialog";
 const RecommendedSection = ({ currentProperty }: { currentProperty: any }) => {const [recommendations, setRecommendations] = useState<any[]>([]);
   useEffect(() => {const fetchRecs = async () => {const { data } = await supabase.from("properties").select("*").neq("id", currentProperty.id).limit(4);
@@ -92,6 +92,16 @@ const PropertyDetail = () => {const { id } = useParams<{ id: string }>();const n
   const handleChatRequest = async () => {if (!user) return toast.error("Please sign in to contact the landlord");if (hasRequested) return toast.info("Request already pending");setRequestLoading(true);
     const { error } = await supabase.from("tenant_requests").insert({property_id: id!,tenant_id: user.id,message: `Hi, I am interested in ${p.title}. Let's chat!`,status: "pending",urgent: false,});
     if (error) toast.error("Failed to send request");else {setHasRequested(true);toast.success("Request sent to Landlord!");}setRequestLoading(false);};
+    
+  const openMapUrl = () => {
+    if (!p?.latitude || !p?.longitude) return toast.error("Map coordinates not available");
+    const isIOS = typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const url = isIOS 
+      ? `https://maps.apple.com/?ll=${p.latitude},${p.longitude}&q=${encodeURIComponent(p.title)}`
+      : `https://www.google.com/maps/search/?api=1&query=${p.latitude},${p.longitude}`;
+    window.open(url, "_blank");
+  };
+
   if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;if (!p) return <div className="h-screen flex items-center justify-center font-black uppercase">Unit Not Found</div>; const displayImages = p.images && p.images.length > 0 ? p.images : [p.image_url || "/placeholder.svg"];
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -158,9 +168,19 @@ const PropertyDetail = () => {const { id } = useParams<{ id: string }>();const n
                   {p.rating || 0}
                 </div>
               </div>
-              <p className="text-[10px] text-muted-foreground font-bold uppercase flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-primary" />{p.address}
-              </p>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <p className="text-[10px] text-muted-foreground font-bold uppercase flex items-center gap-1.5 flex-1">
+                  <MapPin className="w-4 h-4 text-primary shrink-0" />{p.address}
+                </p>
+                {p.latitude && p.longitude && (
+                  <button 
+                    onClick={openMapUrl}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors text-[9px] font-black uppercase tracking-widest shrink-0"
+                  >
+                    <Navigation className="w-3 h-3" /> Get Directions
+                  </button>
+                )}
+              </div>
             </div>
 
             {p.has_vr && p.vr_url ? (

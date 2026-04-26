@@ -112,6 +112,11 @@ const Chat = () => {
       const { data } = await supabase.from("messages").select("*").eq("conversation_id", activeConv.id).order("created_at", { ascending: true });
       setMessages(data || []);
       setTimeout(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }), 50);
+
+      const unreadIds = (data || []).filter(m => m.sender_id !== user?.id && !m.read_at).map(m => m.id);
+      if (unreadIds.length > 0) {
+        await supabase.from("messages").update({ read_at: new Date().toISOString() }).in("id", unreadIds);
+      }
     };
     load();
 
@@ -135,6 +140,9 @@ const Chat = () => {
       content,
     });
     if (error) toast.error("Failed to send");
+    else {
+      await supabase.from("conversations").update({ last_message: content, updated_at: new Date().toISOString() }).eq("id", activeConv.id);
+    }
   };
 
   if (loading) {

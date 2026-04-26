@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   Search, MapPin, Star, Heart, Shield, X, Loader2, User, 
   Settings, LogOut, ChevronDown, Camera, Edit3, Sparkles, 
-  ZapIcon, MessageSquare 
+  ZapIcon, MessageSquare, Mail, Phone, CalendarDays
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -22,20 +22,20 @@ const TenantDashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editName, setEditName] = useState("");
   const [editAvatar, setEditAvatar] = useState("");
   
-  const [activeTab, setActiveTab] = useState<"discover" | "wishlist" | "profile">("discover");
+  const [activeTab, setActiveTab] = useState<"discover" | "overview">("overview");
 
   const isOptimized = searchParams.get("optimize") === "true";
   const hasMaxRent = searchParams.get("maxRent");
 
   const getPageTitle = () => {
-    if (activeTab === "wishlist") return "My Wishlist";
-    if (activeTab === "profile") return "My Profile";
+    if (activeTab === "overview") return "My Tenant Hub";
     if (isOptimized || hasMaxRent) return "Smart Budget Analyzer";
     if (userProfile?.role === 'landlord') return "Landlord Hub";
     return "Marketplace";
@@ -63,6 +63,18 @@ const TenantDashboard = () => {
     }
     const { data: props, error } = await supabase.from("properties").select("*").order("created_at", { ascending: false });
     if (!error && props) setProperties(props);
+    
+    // Unread logic
+    if (user) {
+      const { data: convs } = await supabase.from("conversations").select("id").or(`participant_one.eq.${user.id},participant_two.eq.${user.id}`);
+      if (convs && convs.length > 0) {
+        const { count } = await supabase.from("messages").select("*", { count: "exact", head: true })
+          .in("conversation_id", convs.map(c => c.id))
+          .neq("sender_id", user.id)
+          .is("read_at", null);
+        if (count) setUnreadCount(count);
+      }
+    }
     setLoading(false);
   };
 
@@ -196,8 +208,9 @@ const TenantDashboard = () => {
             </h1>
             
             <div className="flex gap-2">
-              <button onClick={() => navigate("/chat")} className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center hover:bg-border transition-colors border border-border/50">
+              <button onClick={() => navigate("/chat")} className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center hover:bg-border transition-colors border border-border/50 relative">
                 <MessageSquare className="w-4 h-4 text-muted-foreground" />
+                {unreadCount > 0 && <span className="absolute -top-1 -right-1 bg-green-500 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center">{unreadCount}</span>}
               </button>
               
               <div className="relative">
@@ -208,17 +221,13 @@ const TenantDashboard = () => {
                 <AnimatePresence>
                   {showUserMenu && (
                     <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-2xl shadow-xl overflow-hidden z-50">
-                      <button onClick={() => { setActiveTab("profile"); setShowUserMenu(false); }} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-secondary transition-colors text-left">
+                      <button onClick={() => { setActiveTab("overview"); setShowUserMenu(false); }} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-secondary transition-colors text-left">
                         <User className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">My Profile</span>
-                      </button>
-                      <button onClick={() => { setActiveTab("wishlist"); setShowUserMenu(false); }} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-secondary transition-colors text-left border-t border-border/50">
-                        <Heart className="w-4 h-4 text-primary" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Wishlist</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest">My Hub</span>
                       </button>
                       <button onClick={() => { setActiveTab("discover"); setShowUserMenu(false); }} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-secondary transition-colors text-left border-t border-border/50">
                         <Search className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Discover</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest">Marketplace</span>
                       </button>
                       <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-500/10 transition-colors text-left border-t border-border/50">
                         <LogOut className="w-4 h-4 text-red-500" />
@@ -247,53 +256,54 @@ const TenantDashboard = () => {
       </div>
 
       <main className="max-w-6xl mx-auto px-4 mt-8 space-y-12">
-        {activeTab === "profile" && (
-          <section className="max-w-2xl mx-auto bg-card rounded-[3rem] border border-border p-8 md:p-12 shadow-sm">
-            <h2 className="text-2xl font-black uppercase tracking-tighter mb-8">Edit Profile</h2>
-            <div className="space-y-6">
-              <div className="flex items-center gap-6">
-                <div className="relative">
-                  <img src={editAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userProfile?.full_name || 'User'}`} className="w-24 h-24 rounded-full border-4 border-background shadow-xl object-cover bg-secondary" />
-                  <button className="absolute bottom-0 right-0 p-2 bg-primary text-primary-foreground rounded-full shadow-md"><Camera className="w-4 h-4" /></button>
+        {activeTab === "overview" && (
+          <div className="space-y-12">
+            {/* Welcome Card */}
+            <section className="bg-card rounded-[3rem] border border-border p-8 md:p-12 shadow-sm flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-20 -mt-20" />
+              <div className="relative">
+                <img src={userProfile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userProfile?.full_name || 'User'}`} className="w-32 h-32 rounded-full border-4 border-background shadow-xl object-cover bg-secondary" />
+              </div>
+              <div className="flex-1 space-y-4 text-center md:text-left z-10">
+                <div>
+                  <h2 className="text-3xl font-black uppercase tracking-tighter">Welcome Back, <span className="text-primary">{userProfile?.full_name || "Tenant"}</span>!</h2>
+                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mt-2 flex items-center justify-center md:justify-start gap-4">
+                    <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5"/> {userProfile?.email}</span>
+                    {userProfile?.phone && <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5"/> {userProfile?.phone}</span>}
+                  </p>
                 </div>
-                <div className="flex-1 space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Avatar URL</label>
-                  <input type="text" value={editAvatar} onChange={(e) => setEditAvatar(e.target.value)} className="w-full p-3 rounded-xl bg-secondary border border-border text-sm font-bold outline-none" />
+                <div className="pt-4 flex flex-wrap justify-center md:justify-start gap-3">
+                  <button onClick={() => navigate("/visits")} className="px-5 py-2.5 rounded-xl bg-secondary text-foreground text-[10px] font-black uppercase tracking-widest border border-border hover:bg-border transition-all flex items-center gap-2">
+                    <CalendarDays className="w-3.5 h-3.5" /> My Visits
+                  </button>
+                  <button onClick={() => navigate("/chat")} className="px-5 py-2.5 rounded-xl bg-primary text-primary-foreground flex text-[10px] font-black uppercase tracking-widest hover:bg-primary/90 transition-all items-center gap-2">
+                    <MessageSquare className="w-3.5 h-3.5" /> Open Messages
+                  </button>
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Full Name</label>
-                <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full p-4 rounded-xl bg-secondary border border-border text-sm font-bold outline-none" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Email</label>
-                <input type="text" value={userProfile?.email} disabled className="w-full p-4 rounded-xl bg-secondary/50 border border-border/50 text-sm font-bold opacity-70" />
-              </div>
-              <button onClick={handleSaveProfile} className="w-full py-4 rounded-xl bg-foreground text-background font-black uppercase tracking-widest text-xs mt-4">Save Changes</button>
-            </div>
-          </section>
-        )}
+            </section>
 
-        {activeTab === "wishlist" && (
-          <section className="space-y-8">
-            <div className="flex items-center justify-between">
-              <h2 className="text-[12px] font-black uppercase tracking-[0.2em] text-foreground flex items-center gap-2">
-                <Heart className="w-4 h-4 text-primary fill-primary" />
-                Saved Favorites ({favorites.length})
-              </h2>
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {favorites.length > 0 ? (
-                favorites.map((p) => <PropertyCard key={p.id} p={p} />)
-              ) : (
-                <div className="col-span-full py-20 text-center">
-                  <Heart className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
-                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">Your wishlist is empty.</p>
-                </div>
-              )}
-            </div>
-          </section>
+            {/* Wishlist inline */}
+            <section className="space-y-8">
+              <div className="flex items-center justify-between">
+                <h2 className="text-[12px] font-black uppercase tracking-[0.2em] text-foreground flex items-center gap-2">
+                  <Heart className="w-4 h-4 text-primary fill-primary" />
+                  Your Wishlist ({favorites.length})
+                </h2>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                {favorites.length > 0 ? (
+                  favorites.map((p) => <PropertyCard key={p.id} p={p} />)
+                ) : (
+                  <div className="col-span-full py-20 text-center bg-card rounded-[3rem] border border-dashed border-border/50">
+                    <Heart className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">Your wishlist is empty. Start exploring the marketplace!</p>
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
         )}
 
         {activeTab === "discover" && (
