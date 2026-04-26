@@ -21,13 +21,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import PropertyMap, { MapMarkerData } from "@/components/PropertyMap";
-
-// SAFE FALLBACK COMPONENT (Prevents crash if external import fails)
-const SafeEmergencyBadge = () => (
-  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-red-500 text-white text-[9px] font-black uppercase tracking-widest shadow-md">
-    <Siren className="w-3 h-3" /> Emergency
-  </span>
-);
+import { EmergencyBadge } from "@/components/StatusBadges";
 
 interface DBProperty {
   id: string;
@@ -80,19 +74,25 @@ const Landing = () => {
   const checkUser = async () => {
     try {
       const { data: { session }, error: sessionError } = await (supabase.auth as any).getSession();
+
       if (sessionError) throw sessionError;
 
       if (session?.user) {
         setIsLoggedIn(true);
-        const { data: roleData } = await supabase
+        
+        const { data: roleData, error: roleError } = await supabase
           .from("user_roles")
           .select("role")
           .eq("user_id", session.user.id)
           .maybeSingle();
 
-        if (roleData?.role === "admin") setUserRole("admin");
-        else if (roleData?.role === "landlord") setUserRole("landlord");
-        else setUserRole("tenant");
+        if (roleData?.role === "admin") {
+          setUserRole("admin");
+        } else if (roleData?.role === "landlord") {
+          setUserRole("landlord");
+        } else {
+          setUserRole("tenant");
+        }
       } else {
         setIsLoggedIn(false);
         setUserRole(null);
@@ -181,9 +181,14 @@ const Landing = () => {
       navigate("/auth");
       return;
     }
-    if (userRole === "admin") navigate("/admin");
-    else if (userRole === "landlord") navigate("/landlord");
-    else navigate("/tenant");
+
+    if (userRole === "admin") {
+      navigate("/admin");
+    } else if (userRole === "landlord") {
+      navigate("/landlord");
+    } else {
+      navigate("/tenant");
+    }
   };
 
   const filters = [
@@ -251,10 +256,18 @@ const Landing = () => {
         )}
       </AnimatePresence>
 
+      {/* Hero Section */}
       <section className="relative min-h-[75vh] flex items-center justify-center px-4 pt-16 pb-24 overflow-hidden bg-slate-950">
-        <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover z-0 opacity-60">
+        <video 
+          autoPlay 
+          loop 
+          muted 
+          playsInline 
+          className="absolute inset-0 w-full h-full object-cover z-0 opacity-60"
+        >
           <source src="/hero-video.mp4" type="video/mp4" />
         </video>
+
         <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/40 to-background z-[1]" />
         
         <div className="text-center max-w-3xl mx-auto space-y-8 relative z-10">
@@ -272,6 +285,7 @@ const Landing = () => {
             <button onClick={handleBrowse} className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-primary text-primary-foreground text-[12px] font-bold uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-primary/20">
               Browse Listings <ArrowRight className="w-4 h-4" />
             </button>
+            
             <button onClick={handleDashboardRedirect} className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 text-white text-[12px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all">
               {isLoggedIn ? (
                 <>
@@ -279,17 +293,24 @@ const Landing = () => {
                   {userRole === 'admin' ? "Admin Hub" : userRole === 'landlord' ? "Landlord Hub" : "Tenant Hub"}
                 </>
               ) : (
-                <><LogIn className="w-4 h-4" /> Login</>
+                <>
+                  <LogIn className="w-4 h-4" /> Login
+                </>
               )}
             </button>
           </motion.div>
         </div>
       </section>
 
+      {/* Floating Filter Cards */}
       <div className="container max-w-5xl mx-auto px-4 -mt-16 relative z-30">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {filters.map((f) => (
-            <button key={f.l} onClick={f.a} className="bg-card/90 backdrop-blur-2xl border border-border/50 rounded-[2rem] p-6 text-center space-y-3 hover:border-primary/50 hover:-translate-y-1 transition-all group shadow-xl">
+            <button 
+              key={f.l} 
+              onClick={f.a} 
+              className="bg-card/90 backdrop-blur-2xl border border-border/50 rounded-[2rem] p-6 text-center space-y-3 hover:border-primary/50 hover:-translate-y-1 transition-all group shadow-xl"
+            >
               <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto group-hover:bg-primary transition-colors">
                 <f.i className="w-6 h-6 text-primary group-hover:text-primary-foreground transition-colors" />
               </div>
@@ -302,6 +323,7 @@ const Landing = () => {
         </div>
       </div>
 
+      {/* Marketplace Section */}
       <main className="container max-w-6xl mx-auto px-4 py-20 space-y-10">
         <div className="flex flex-col md:flex-row justify-between items-end gap-4 border-b border-border/50 pb-8">
           <div className="space-y-1">
@@ -316,14 +338,25 @@ const Landing = () => {
           <div className="flex items-center gap-2 flex-wrap">
             <div className="relative">
               <ArrowDownNarrowWide className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-              <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} className="pl-9 pr-3 py-2.5 rounded-xl bg-card border border-border text-[10px] font-black uppercase tracking-widest cursor-pointer hover:border-primary/50 transition-all">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="pl-9 pr-3 py-2.5 rounded-xl bg-card border border-border text-[10px] font-black uppercase tracking-widest cursor-pointer hover:border-primary/50 transition-all"
+              >
                 <option value="default">Sort: Default</option>
                 <option value="price-asc">Price: Low → High</option>
                 <option value="price-desc">Price: High → Low</option>
                 <option value="rating">Rating</option>
               </select>
             </div>
-            <button onClick={() => setEmergencyOnly((v) => !v)} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${emergencyOnly ? "bg-red-500 text-white border-red-500 shadow-md" : "bg-card text-muted-foreground border-border hover:border-red-500/50"}`}>
+            <button
+              onClick={() => setEmergencyOnly((v) => !v)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
+                emergencyOnly
+                  ? "bg-red-500 text-white border-red-500 shadow-md"
+                  : "bg-card text-muted-foreground border-border hover:border-red-500/50"
+              }`}
+            >
               <Siren className="w-3.5 h-3.5" /> Emergency Only
             </button>
           </div>
@@ -340,7 +373,11 @@ const Landing = () => {
                 let arr = emergencyOnly ? list.filter((p) => p.is_emergency) : [...list];
                 if (sortBy === "price-asc") arr.sort((a, b) => a.rent - b.rent);
                 else if (sortBy === "price-desc") arr.sort((a, b) => b.rent - a.rent);
-                else if (sortBy === "rating") arr.sort((a, b) => Number(liveRating(b)) - Number(liveRating(a)));
+                else if (sortBy === "rating") arr.sort((a, b) => {
+                  const rA = Number(liveRating(a));
+                  const rB = Number(liveRating(b));
+                  return rB - rA;
+                });
                 return arr;
               })().map((p, i) => (
                 <motion.div key={p.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="group cursor-pointer space-y-4" onClick={() => navigate(`/property/${p.id}`)}>
@@ -350,14 +387,14 @@ const Landing = () => {
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-primary text-primary-foreground text-[9px] font-black uppercase tracking-widest shadow-md">
                         <Award className="w-3 h-3" /> Featured
                       </span>
-                      {p.is_emergency && <SafeEmergencyBadge />}
+                      {p.is_emergency && <EmergencyBadge size="md" />}
                     </div>
                     <div className="absolute top-4 right-4 bg-background/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[11px] font-bold text-primary">₹{p.rent.toLocaleString()}</div>
                   </div>
                   <div className="px-2 space-y-1">
                     <div className="flex justify-between items-center">
                       <h3 className="text-lg font-bold tracking-tight group-hover:text-primary transition-colors">{p.title}</h3>
-                      <div className="flex items-center gap-1 text-orange-500 text-[10px] font-bold">
+                      <div className="flex items-center gap-1 text-orange-500 text-[10px] font-bold" title={ratings[p.id]?.count ? `${ratings[p.id].count} review(s)` : "No reviews yet"}>
                         <Star className="w-3 h-3 fill-current" /> {liveRating(p)}
                       </div>
                     </div>
@@ -367,14 +404,28 @@ const Landing = () => {
               ))}
             </div>
             <aside className="md:sticky md:top-24 self-start space-y-2">
-              <h3 className="text-[9px] font-black uppercase tracking-[0.25em] flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-primary" /> Live Map</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-[9px] font-black uppercase tracking-[0.25em] flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-primary" /> Live Map
+                </h3>
+                <span className="text-[9px] font-bold text-muted-foreground uppercase">{mapProps.length} pins</span>
+              </div>
               <PropertyMap
                 height="320px"
                 markers={mapProps.map((p) => ({
-                  id: p.id, lat: p.latitude!, lng: p.longitude!, title: p.title, rent: p.rent, isEmergency: p.is_emergency,
-                  onClick: () => navigate(`/property/${p.id}`), detailHref: `/property/${p.id}`,
+                  id: p.id,
+                  lat: p.latitude!,
+                  lng: p.longitude!,
+                  title: p.title,
+                  rent: p.rent,
+                  isEmergency: p.is_emergency,
+                  onClick: () => navigate(`/property/${p.id}`),
+                  detailHref: `/property/${p.id}`,
                 })) as MapMarkerData[]}
               />
+              {mapProps.length === 0 && (
+                <p className="text-[10px] font-bold uppercase text-muted-foreground text-center py-2">No mapped properties yet — landlords can add coordinates.</p>
+              )}
             </aside>
           </div>
         )}

@@ -1,5 +1,5 @@
 import React from "react";
-import { Siren, CheckCircle2, Lock } from "lucide-react";
+import { Siren, CheckCircle2, Lock, Clock } from "lucide-react";
 
 export const EmergencyBadge = ({ size = "sm" }: { size?: "xs" | "sm" | "md" }) => {
   const cls = 
@@ -30,6 +30,10 @@ export const AvailabilityPill = ({ status }: { status?: string | null }) => {
     IconComponent = Lock;
     label = "Unavailable";
     colorCls = "bg-zinc-500/10 text-zinc-600 border-zinc-500/30";
+  } else if (s === "pending") {
+    IconComponent = Clock;
+    label = "Pending";
+    colorCls = "bg-blue-500/10 text-blue-600 border-blue-500/30";
   }
 
   return (
