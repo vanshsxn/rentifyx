@@ -1,64 +1,40 @@
 import React from "react";
 import { Siren, CheckCircle2, Lock, Clock } from "lucide-react";
 
-/**
- * STRICLY REACT 18 COMPLIANT
- * This file avoids any 'use' hooks or dynamic context to prevent 
- * build-time transpilation errors.
- */
-
-interface BadgeProps {
-  size?: "xs" | "sm" | "md";
-}
-
-export const EmergencyBadge = ({ size = "sm" }: BadgeProps) => {
-  // Define sizes as a standard object to avoid logic inside the return
-  const sizeMap = {
-    xs: { container: "text-[8px] px-1.5 py-0.5", icon: 10 },
-    sm: { container: "text-[9px] px-2 py-1", icon: 12 },
-    md: { container: "text-[10px] px-3 py-1.5", icon: 14 },
-  };
-
-  const config = sizeMap[size] || sizeMap.sm;
-
+export const EmergencyBadge = () => {
   return (
-    <span 
-      className={`inline-flex items-center gap-1 rounded-md font-black uppercase tracking-widest bg-red-500 text-white shadow-md ${config.container}`}
-    >
-      <Siren size={config.icon} strokeWidth={3} />
-      <span>Emergency</span>
-    </span>
+    <div className="inline-flex items-center gap-1 bg-red-600 text-white px-2 py-1 rounded-md shadow-md animate-pulse">
+      <Siren size={12} strokeWidth={3} />
+      <span className="text-[9px] font-black uppercase tracking-widest">Emergency</span>
+    </div>
   );
 };
 
 export const AvailabilityPill = ({ status }: { status?: string | null }) => {
-  // Normalize status safely
-  const s = (status || "available").toLowerCase();
-  
-  // Explicit conditional rendering to avoid 'E.use' transpilation
-  if (s === "booked" || s === "unavailable") {
+  const currentStatus = (status || "available").toLowerCase();
+
+  if (currentStatus === "booked" || currentStatus === "unavailable") {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest border bg-amber-500/10 text-amber-600 border-amber-500/30">
-        <Lock size={12} strokeWidth={3} />
-        <span>Booked</span>
-      </span>
+      <div className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 border border-amber-200 px-2 py-1 rounded-md">
+        <Lock size={12} strokeWidth={2} />
+        <span className="text-[9px] font-black uppercase tracking-widest">Booked</span>
+      </div>
     );
   }
 
-  if (s === "pending") {
+  if (currentStatus === "pending") {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest border bg-blue-500/10 text-blue-600 border-blue-500/30">
-        <Clock size={12} strokeWidth={3} />
-        <span>Pending</span>
-      </span>
+      <div className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200 px-2 py-1 rounded-md">
+        <Clock size={12} strokeWidth={2} />
+        <span className="text-[9px] font-black uppercase tracking-widest">Pending</span>
+      </div>
     );
   }
 
-  // Default: Available
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest border bg-green-500/10 text-green-600 border-green-500/30">
-      <CheckCircle2 size={12} strokeWidth={3} />
-      <span>Available</span>
-    </span>
+    <div className="inline-flex items-center gap-1 bg-green-50 text-green-700 border border-green-200 px-2 py-1 rounded-md">
+      <CheckCircle2 size={12} strokeWidth={2} />
+      <span className="text-[9px] font-black uppercase tracking-widest">Available</span>
+    </div>
   );
 };

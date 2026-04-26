@@ -387,7 +387,7 @@ const Landing = () => {
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-primary text-primary-foreground text-[9px] font-black uppercase tracking-widest shadow-md">
                         <Award className="w-3 h-3" /> Featured
                       </span>
-                      {p.is_emergency && <EmergencyBadge size="md" />}
+                      {p.is_emergency && <EmergencyBadge />}
                     </div>
                     <div className="absolute top-4 right-4 bg-background/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[11px] font-bold text-primary">₹{p.rent.toLocaleString()}</div>
                   </div>

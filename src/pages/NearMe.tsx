@@ -20,6 +20,7 @@ interface Prop {
   availability_status?: string | null;
 }
 
+// Haversine formula for distance calculation
 const distanceKm = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
   const R = 6371;
   const dLat = ((b.lat - a.lat) * Math.PI) / 180;
@@ -49,12 +50,14 @@ const NearMe = () => {
     () => typeof window !== "undefined" && localStorage.getItem("nearme_avail_only") === "1"
   );
 
+  // Sync settings to local storage
   useEffect(() => {
     localStorage.setItem("nearme_radius", String(radius));
     localStorage.setItem("nearme_filter", filter);
     localStorage.setItem("nearme_avail_only", availOnly ? "1" : "0");
   }, [radius, filter, availOnly]);
 
+  // Initial Data Fetch
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -90,7 +93,11 @@ const NearMe = () => {
   }, []);
 
   const getLocation = () => {
-    if (!navigator.geolocation) return toast.error("Geolocation not supported");
+    if (!navigator.geolocation) {
+      toast.error("Geolocation not supported by your browser");
+      return;
+    }
+    
     toast.loading("Getting your location…", { id: "geo" });
     
     navigator.geolocation.getCurrentPosition(
@@ -100,16 +107,20 @@ const NearMe = () => {
       },
       (err) => {
         toast.dismiss("geo");
-        toast.error("Location access denied or unavailable.");
+        console.warn("Location error:", err);
+        toast.error("Location access denied or unavailable. Showing all standard map data.");
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     );
   };
 
+  // Filter and sort properties based on state
   const filtered = useMemo(() => {
     let base = props.filter((p) => p.latitude && p.longitude);
+    
     if (filter === "emergency") base = base.filter((p) => p.is_emergency);
     else if (filter === "normal") base = base.filter((p) => !p.is_emergency);
+    
     if (availOnly) base = base.filter((p) => (p.availability_status || "available") === "available");
     
     if (!userLoc) return base;
@@ -123,6 +134,7 @@ const NearMe = () => {
       .sort((a, b) => a.dist - b.dist);
   }, [props, userLoc, radius, filter, availOnly]);
 
+  // Map marker data generation
   const markers: MapMarkerData[] = useMemo(() => filtered.map((p) => ({
     id: p.id,
     lat: p.latitude!,
@@ -134,6 +146,7 @@ const NearMe = () => {
     detailHref: `/property/${p.id}`,
   })), [filtered, navigate]);
 
+  // Properties without valid coordinates
   const unmapped = useMemo(() => {
     let base = props.filter((p) => !p.latitude || !p.longitude);
     if (filter === "emergency") base = base.filter((p) => p.is_emergency);
@@ -142,47 +155,52 @@ const NearMe = () => {
     return base;
   }, [props, filter, availOnly]);
 
-  const mapsUrl = (p: Prop) => {
+  // Official routing URLs for Apple Maps and Google Maps
+  const getMapsUrl = (p: Prop) => {
     const isIOS = typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent);
+    
     if (isIOS) {
       return userLoc
         ? `https://maps.apple.com/?saddr=${userLoc.lat},${userLoc.lng}&daddr=${p.latitude},${p.longitude}`
         : `https://maps.apple.com/?ll=${p.latitude},${p.longitude}&q=${encodeURIComponent(p.title)}`;
     }
+    
     return userLoc
       ? `https://www.google.com/maps/dir/?api=1&origin=${userLoc.lat},${userLoc.lng}&destination=${p.latitude},${p.longitude}&travelmode=driving`
       : `https://www.google.com/maps/search/?api=1&query=${p.latitude},${p.longitude}`;
   };
 
-  const ratingFor = (p: Prop) => {
+  const getRating = (p: Prop) => {
     const r = ratings[p.id];
     if (r && r.count > 0) return r.avg.toFixed(1);
     if (p.rating && p.rating > 0) return Number(p.rating).toFixed(1);
     return "—";
   };
 
-  if (loading) return (
-    <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
-      <Loader2 className="w-10 h-10 animate-spin text-primary" />
-      <p className="text-[10px] font-black uppercase tracking-[0.2em] animate-pulse">Loading Properties...</p>
-    </div>
-  );
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
+        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+        <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Loading Properties...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="container max-w-7xl mx-auto px-4 py-6 space-y-6">
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black tracking-tighter italic uppercase flex items-center gap-3">
+          <h1 className="text-3xl font-black tracking-tighter uppercase flex items-center gap-3">
             <MapPin className="w-8 h-8 text-primary" /> Near Me
           </h1>
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
-            {filtered.length} listings {userLoc ? `within ${radius}km` : "available on map"}
+            {filtered.length} properties {userLoc ? `within ${radius}km` : "available on map"}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {userLoc && (
-            <div className="flex items-center gap-3 bg-secondary/50 border border-border rounded-2xl px-4 py-2">
-              <span className="text-[10px] font-black uppercase">Range:</span>
+            <div className="flex items-center gap-3 bg-secondary/30 border border-border rounded-xl px-4 py-2">
+              <span className="text-[10px] font-black uppercase text-muted-foreground">Range:</span>
               <input 
                 type="range" min={1} max={50} value={radius} 
                 onChange={(e) => setRadius(+e.target.value)} 
@@ -193,7 +211,7 @@ const NearMe = () => {
           )}
           <button 
             onClick={getLocation} 
-            className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-primary text-primary-foreground text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-[10px] font-black uppercase tracking-widest hover:bg-primary/90 transition-colors"
           >
             <Navigation className="w-4 h-4" /> {userLoc ? "Refresh" : "Find Me"}
           </button>
@@ -209,10 +227,10 @@ const NearMe = () => {
           <button
             key={opt.k}
             onClick={() => setFilter(opt.k as any)}
-            className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all ${
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
               filter === opt.k
-                ? "bg-foreground text-background border-foreground shadow-lg"
-                : "bg-card border-border text-muted-foreground hover:border-primary/50"
+                ? "bg-foreground text-background border-foreground shadow-md"
+                : "bg-card border-border text-muted-foreground hover:border-primary/40"
             }`}
           >
             <opt.icon className="w-4 h-4" /> {opt.l}
@@ -220,18 +238,18 @@ const NearMe = () => {
         ))}
         <button
           onClick={() => setAvailOnly((v) => !v)}
-          className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all ${
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
             availOnly
-              ? "bg-green-600 text-white border-green-600 shadow-lg"
-              : "bg-card border-border text-muted-foreground hover:border-green-500/50"
+              ? "bg-green-600 text-white border-green-600 shadow-md"
+              : "bg-card border-border text-muted-foreground hover:border-green-500/40"
           }`}
         >
           <CheckCircle2 className="w-4 h-4" /> Available Only
         </button>
       </section>
 
-      <div className="rounded-[2.5rem] overflow-hidden border border-border shadow-2xl bg-card">
-        <PropertyMap markers={markers} userLocation={userLoc} height="550px" />
+      <div className="rounded-2xl overflow-hidden border border-border shadow-sm bg-card relative z-0">
+        <PropertyMap markers={markers} userLocation={userLoc} height="500px" />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
@@ -239,48 +257,48 @@ const NearMe = () => {
           <div 
             key={p.id} 
             onClick={() => navigate(`/property/${p.id}`)} 
-            className="group cursor-pointer bg-card border border-border rounded-[2rem] overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+            className="group cursor-pointer bg-card border border-border rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300"
           >
-            <div className="aspect-[16/10] relative overflow-hidden">
+            <div className="aspect-video relative overflow-hidden bg-muted">
               <img 
                 src={p.image_url || "/placeholder.svg"} 
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                 alt={p.title} 
               />
-              <div className="absolute top-4 left-4 flex flex-col gap-2">
+              <div className="absolute top-3 left-3 flex flex-col gap-2">
                 {p.is_emergency && <EmergencyBadge />}
               </div>
-              <div className="absolute bottom-4 right-4">
+              <div className="absolute bottom-3 right-3">
                 <AvailabilityPill status={p.availability_status} />
               </div>
             </div>
-            <div className="p-5 space-y-3">
+            <div className="p-4 space-y-3">
               <div className="flex justify-between items-start gap-2">
-                <h3 className="text-sm font-black uppercase tracking-tight leading-tight line-clamp-1">{p.title}</h3>
-                <div className="flex items-center gap-1 bg-orange-500/10 text-orange-600 px-2 py-1 rounded-lg text-[10px] font-black">
-                  <Star className="w-3 h-3 fill-current" /> {ratingFor(p)}
+                <h3 className="text-sm font-bold uppercase tracking-tight line-clamp-1">{p.title}</h3>
+                <div className="flex items-center gap-1 bg-orange-50 text-orange-600 px-2 py-1 rounded-md text-[10px] font-black shrink-0">
+                  <Star className="w-3 h-3 fill-current" /> {getRating(p)}
                 </div>
               </div>
               
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">{p.area}</p>
-                  <p className="text-lg font-black text-primary mt-0.5">₹{p.rent.toLocaleString()}<span className="text-[10px] text-muted-foreground font-bold">/mo</span></p>
+                  <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-widest">{p.area}</p>
+                  <p className="text-lg font-black text-primary mt-1">₹{p.rent.toLocaleString()}<span className="text-[10px] text-muted-foreground font-normal">/mo</span></p>
                 </div>
                 {userLoc && p.dist !== undefined && (
-                  <div className="text-right">
-                    <span className="block text-[10px] font-black uppercase text-muted-foreground">Distance</span>
-                    <span className="text-xs font-black">{p.dist.toFixed(1)} km away</span>
+                  <div className="text-right bg-secondary/50 px-2 py-1.5 rounded-lg border border-border">
+                    <span className="block text-[8px] font-black uppercase text-muted-foreground mb-0.5">Distance</span>
+                    <span className="text-xs font-black">{p.dist.toFixed(1)} km</span>
                   </div>
                 )}
               </div>
 
               <a
-                href={mapsUrl(p)}
+                href={getMapsUrl(p)}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-primary/10 text-primary text-[10px] font-black uppercase tracking-[0.15em] hover:bg-primary hover:text-primary-foreground transition-all"
+                className="flex items-center justify-center gap-2 w-full py-2.5 mt-2 rounded-xl bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-primary-foreground transition-colors"
               >
                 <Navigation className="w-3.5 h-3.5" />
                 Get Directions
@@ -292,27 +310,28 @@ const NearMe = () => {
       </div>
 
       {unmapped.length > 0 && (
-        <div className="mt-16 space-y-6">
-          <div className="flex items-center gap-4">
-            <div className="h-px flex-1 bg-border"></div>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Building2 className="w-4 h-4" />
-              <h2 className="text-[10px] font-black uppercase tracking-[0.2em]">Nearby Offline Listings ({unmapped.length})</h2>
-            </div>
-            <div className="h-px flex-1 bg-border"></div>
+        <div className="mt-12 space-y-6 pt-8 border-t border-border">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Building2 className="w-5 h-5" />
+            <h2 className="text-xs font-black uppercase tracking-widest">Listings without Map Data ({unmapped.length})</h2>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 opacity-75 grayscale-[0.5] hover:grayscale-0 transition-all">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {unmapped.map((p) => (
-              <button key={p.id} onClick={() => navigate(`/property/${p.id}`)} className="text-left bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/50 transition-all">
-                <div className="aspect-video relative">
-                  <img src={p.image_url || "/placeholder.svg"} className="w-full h-full object-cover" alt={p.title} />
+              <div 
+                key={p.id} 
+                onClick={() => navigate(`/property/${p.id}`)} 
+                className="cursor-pointer bg-card border border-border rounded-xl overflow-hidden hover:border-primary/50 transition-colors"
+              >
+                <div className="aspect-video relative bg-muted">
+                  <img src={p.image_url || "/placeholder.svg"} className="w-full h-full object-cover opacity-80" alt={p.title} />
+                  <div className="absolute top-2 left-2">{p.is_emergency && <EmergencyBadge />}</div>
                 </div>
                 <div className="p-3">
-                  <h3 className="text-[10px] font-black uppercase truncate">{p.title}</h3>
-                  <p className="text-xs font-black text-primary mt-1">₹{p.rent.toLocaleString()}</p>
+                  <h3 className="text-xs font-bold uppercase truncate">{p.title}</h3>
+                  <p className="text-sm font-black text-primary mt-1">₹{p.rent.toLocaleString()}</p>
                 </div>
-              </button>
+              </div>
             ))}
           </div>
         </div>
