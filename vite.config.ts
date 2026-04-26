@@ -4,7 +4,6 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 
 export default defineConfig(({ mode }) => ({
-  // CRITICAL: This ensures all assets are loaded from the root URL
   base: "/", 
   server: {
     host: "::",
@@ -12,7 +11,6 @@ export default defineConfig(({ mode }) => ({
     hmr: {
       overlay: false,
     },
-    // Allows refreshes to work correctly during local development
     historyApiFallback: true, 
   },
   plugins: [
@@ -24,10 +22,17 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // ADD THIS SECTION TO FIX THE "E.USE" ERROR
+  optimizeDeps: {
+    include: ['react', 'react-dom'],
+    force: true // This forces Vite to re-scan dependencies
+  },
   build: {
-    // This is where Render looks for your files
     outDir: "dist", 
-    // This helps debug issues by creating a map of your code
-    sourcemap: mode === "development", 
+    sourcemap: mode === "development",
+    // Ensures commonjs modules are handled correctly in React 19
+    commonjsOptions: {
+      transformMixedEsModules: true,
+    },
   }
 }));
