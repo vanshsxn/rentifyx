@@ -53,16 +53,11 @@ const Chat = () => {
 
     // If linking from property detail with a specific user, ensure conversation exists
     if (targetUserId && targetUserId !== user.id && targetUserId !== "undefined" && targetUserId !== "null") {
-      const { data: userConvs, error: existingError } = await supabase
-        .from("conversations")
-        .select("*")
-        .or(`participant_one.eq.${user.id},participant_two.eq.${user.id}`);
+      const { data: q1 } = await supabase.from("conversations").select("*").eq("participant_one", user.id);
+      const { data: q2 } = await supabase.from("conversations").select("*").eq("participant_two", user.id);
+      const allConvs = [...(q1 || []), ...(q2 || [])];
 
-      if (existingError) {
-        console.error("Error finding chat:", existingError);
-      }
-
-      const existing = (userConvs || []).find(c => 
+      const existing = allConvs.find(c => 
         (c.participant_one === user.id && c.participant_two === targetUserId) ||
         (c.participant_one === targetUserId && c.participant_two === user.id)
       );
@@ -70,31 +65,43 @@ const Chat = () => {
       if (!existing) {
         const cleanPropertyId = propertyId && propertyId !== "undefined" && propertyId !== "null" ? propertyId : null;
         
-        const { error: insertError } = await supabase.from("conversations").insert({
+        const payload: any = {
           participant_one: user.id,
-          participant_two: targetUserId,
-          property_id: cleanPropertyId,
-        });
+          participant_two: targetUserId
+        };
+        if (cleanPropertyId) payload.property_id = cleanPropertyId;
+
+        const { error: insertError } = await supabase.from("conversations").insert(payload);
         
         if (insertError) {
-          toast.error("Error starting chat.");
-          console.error("Chat insert failed:", insertError);
+          toast.error("DB Error: " + insertError.message);
+          console.error("Chat insert failed detail:", insertError);
         }
       }
     }
-    await loadConversations();
+    
+    // Explicitly load via two queries to avoid any PostgREST OR bugs
+    const { data: r1 } = await supabase.from("conversations").select("*").eq("participant_one", user.id);
+    const { data: r2 } = await supabase.from("conversations").select("*").eq("participant_two", user.id);
+    const combined = [...(r1 || []), ...(r2 || [])];
+    
+    // Deduplicate by ID
+    const uniqueIds = new Set<string>();
+    const safeConvs: any[] = [];
+    for (const c of combined) {
+        if (!uniqueIds.has(c.id)) {
+            uniqueIds.add(c.id);
+            safeConvs.push(c);
+        }
+    }
+    safeConvs.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+    
+    await loadConversationsOverride(safeConvs);
     setLoading(false);
   };
 
-  const loadConversations = async () => {
-    if (!user) return;
-    const { data: convs } = await supabase
-      .from("conversations")
-      .select("*")
-      .or(`participant_one.eq.${user.id},participant_two.eq.${user.id}`)
-      .order("updated_at", { ascending: false });
-
-    if (!convs) return;
+  const loadConversationsOverride = async (convs: any[]) => {
+    if (!user || !convs) return;
 
     // Fetch profiles + property titles Safely (handling schema cache errors)
     const otherIds = convs.map((c) => (c.participant_one === user.id ? c.participant_two : c.participant_one));
