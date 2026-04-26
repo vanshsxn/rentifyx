@@ -44,6 +44,7 @@ const Landing = () => {
   const [list, setList] = useState<DBProperty[]>([]);
   const [loading, setLoading] = useState(true);
   const [mapProps, setMapProps] = useState<DBProperty[]>([]);
+  const [ratings, setRatings] = useState<Record<string, { avg: number; count: number }>>({});
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [emergencyOnly, setEmergencyOnly] = useState<boolean>(
@@ -56,7 +57,6 @@ const Landing = () => {
   useEffect(() => {
     localStorage.setItem("featured_emergency_only", emergencyOnly ? "1" : "0");
   }, [emergencyOnly]);
-
   useEffect(() => {
     localStorage.setItem("featured_sort", sortBy);
   }, [sortBy]);
@@ -68,21 +68,23 @@ const Landing = () => {
     checkUser();
     getFeatured();
     getMapped();
+    getRatings();
   }, []);
 
   const checkUser = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await (supabase.auth as any).getSession();
+
+      if (sessionError) throw sessionError;
 
       if (session?.user) {
         setIsLoggedIn(true);
         
-        // Safety: use .maybeSingle() instead of .single() to prevent 406/crash if role is missing
         const { data: roleData } = await supabase
           .from("user_roles")
           .select("role")
           .eq("user_id", session.user.id)
-          .maybeSingle();
+          .single();
 
         if (roleData?.role === "admin") {
           setUserRole("admin");
@@ -102,43 +104,61 @@ const Landing = () => {
   };
 
   const getFeatured = async () => {
-    try {
-      let { data, error } = await supabase
+    let { data, error } = await supabase
+      .from("properties")
+      .select("*")
+      .eq("is_featured", true)
+      .limit(6);
+
+    if (error || !data || data.length === 0) {
+      const { data: topRated } = await supabase
         .from("properties")
         .select("*")
-        .eq("is_featured", true)
+        .order("rating", { ascending: false })
         .limit(6);
-
-      if (error || !data || data.length === 0) {
-        const { data: topRated } = await supabase
-          .from("properties")
-          .select("*")
-          .order("rating", { ascending: false })
-          .limit(6);
-        setList(topRated || []);
-      } else {
-        setList(data);
-      }
-    } catch (e) {
-      console.error("Fetch featured error:", e);
-    } finally {
-      setLoading(false);
+      setList(topRated || []);
+    } else {
+      setList(data);
     }
+    setLoading(false);
   };
 
   const getMapped = async () => {
-    try {
-      const { data } = await supabase
-        .from("properties")
-        .select("id, title, address, area, rent, rating, image_url, tags, has_vr, latitude, longitude, is_emergency")
-        .not("latitude", "is", null)
-        .not("longitude", "is", null)
-        .limit(50);
-      
-      setMapProps((data as DBProperty[]) || []);
-    } catch (e) {
-      console.error("Map fetch error:", e);
+    const { data } = await supabase
+      .from("properties")
+      .select("id, title, address, area, rent, rating, image_url, tags, has_vr, latitude, longitude, is_emergency")
+      .not("latitude", "is", null)
+      .not("longitude", "is", null)
+      .limit(50);
+    setMapProps((data as any) || []);
+  };
+
+  const getRatings = async () => {
+    const { data, error } = await supabase.from("property_ratings").select("property_id, rating");
+    
+    if (error) {
+      console.error("Error fetching ratings:", error);
+      return;
     }
+
+    const map: Record<string, { sum: number; count: number }> = {};
+    (data || []).forEach((r: any) => {
+      if (!map[r.property_id]) map[r.property_id] = { sum: 0, count: 0 };
+      map[r.property_id].sum += Number(r.rating) || 0;
+      map[r.property_id].count += 1;
+    });
+    const agg: Record<string, { avg: number; count: number }> = {};
+    Object.entries(map).forEach(([k, v]) => {
+      agg[k] = { avg: v.count > 0 ? v.sum / v.count : 0, count: v.count };
+    });
+    setRatings(agg);
+  };
+
+  const liveRating = (p: DBProperty) => {
+    const r = ratings[p.id];
+    if (r && r.count > 0) return r.avg.toFixed(1);
+    if (p.rating && p.rating > 0) return Number(p.rating).toFixed(1);
+    return "0.0";
   };
 
   const handleBudgetOptimization = () => {
@@ -157,9 +177,14 @@ const Landing = () => {
       navigate("/auth");
       return;
     }
-    if (userRole === "admin") navigate("/admin");
-    else if (userRole === "landlord") navigate("/landlord");
-    else navigate("/tenant");
+
+    if (userRole === "admin") {
+      navigate("/admin");
+    } else if (userRole === "landlord") {
+      navigate("/landlord");
+    } else {
+      navigate("/tenant");
+    }
   };
 
   const filters = [
@@ -195,12 +220,14 @@ const Landing = () => {
                 <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto">
                   <Zap className="w-8 h-8 text-primary fill-primary" />
                 </div>
+                
                 <div className="space-y-2">
                   <h2 className="text-2xl font-black uppercase tracking-tighter italic">AI Budget Matcher</h2>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase leading-relaxed">
                     Analyzing market data to find your <br /> perfect high-value match.
                   </p>
                 </div>
+
                 <div className="relative">
                   <IndianRupee className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
                   <input 
@@ -212,6 +239,7 @@ const Landing = () => {
                     onChange={(e) => setTempBudget(e.target.value)}
                   />
                 </div>
+
                 <button 
                   onClick={handleBudgetOptimization}
                   className="w-full py-5 bg-foreground text-background rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-primary hover:text-white transition-all shadow-xl active:scale-95"
@@ -225,9 +253,16 @@ const Landing = () => {
       </AnimatePresence>
 
       <section className="relative min-h-[75vh] flex items-center justify-center px-4 pt-16 pb-24 overflow-hidden bg-slate-950">
-        <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover z-0 opacity-60">
+        <video 
+          autoPlay 
+          loop 
+          muted 
+          playsInline 
+          className="absolute inset-0 w-full h-full object-cover z-0 opacity-60"
+        >
           <source src="/hero-video.mp4" type="video/mp4" />
         </video>
+
         <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/40 to-background z-[1]" />
         
         <div className="text-center max-w-3xl mx-auto space-y-8 relative z-10">
@@ -245,6 +280,7 @@ const Landing = () => {
             <button onClick={handleBrowse} className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-primary text-primary-foreground text-[12px] font-bold uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-primary/20">
               Browse Listings <ArrowRight className="w-4 h-4" />
             </button>
+            
             <button onClick={handleDashboardRedirect} className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 text-white text-[12px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all">
               {isLoggedIn ? (
                 <>
@@ -264,7 +300,11 @@ const Landing = () => {
       <div className="container max-w-5xl mx-auto px-4 -mt-16 relative z-30">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {filters.map((f) => (
-            <button key={f.l} onClick={f.a} className="bg-card/90 backdrop-blur-2xl border border-border/50 rounded-[2rem] p-6 text-center space-y-3 hover:border-primary/50 hover:-translate-y-1 transition-all group shadow-xl">
+            <button 
+              key={f.l} 
+              onClick={f.a} 
+              className="bg-card/90 backdrop-blur-2xl border border-border/50 rounded-[2rem] p-6 text-center space-y-3 hover:border-primary/50 hover:-translate-y-1 transition-all group shadow-xl"
+            >
               <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto group-hover:bg-primary transition-colors">
                 <f.i className="w-6 h-6 text-primary group-hover:text-primary-foreground transition-colors" />
               </div>
@@ -305,7 +345,9 @@ const Landing = () => {
             <button
               onClick={() => setEmergencyOnly((v) => !v)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
-                emergencyOnly ? "bg-red-500 text-white border-red-500" : "bg-card text-muted-foreground"
+                emergencyOnly
+                  ? "bg-red-500 text-white border-red-500 shadow-md"
+                  : "bg-card text-muted-foreground border-border hover:border-red-500/50"
               }`}
             >
               <Siren className="w-3.5 h-3.5" /> Emergency Only
@@ -314,17 +356,21 @@ const Landing = () => {
         </div>
 
         {loading ? (
-          <div className="h-64 flex items-center justify-center">
-            <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+          <div className="h-64 flex flex-col items-center justify-center gap-3">
+             <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-[1fr,300px] gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-[1fr,280px] gap-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {(() => {
                 let arr = emergencyOnly ? list.filter((p) => p.is_emergency) : [...list];
                 if (sortBy === "price-asc") arr.sort((a, b) => a.rent - b.rent);
                 else if (sortBy === "price-desc") arr.sort((a, b) => b.rent - a.rent);
-                else if (sortBy === "rating") arr.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+                else if (sortBy === "rating") arr.sort((a, b) => {
+                  const ratingA = Number(liveRating(a));
+                  const ratingB = Number(liveRating(b));
+                  return ratingB - ratingA;
+                });
                 return arr;
               })().map((p, i) => (
                 <motion.div key={p.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="group cursor-pointer space-y-4" onClick={() => navigate(`/property/${p.id}`)}>
@@ -341,36 +387,38 @@ const Landing = () => {
                   <div className="px-2 space-y-1">
                     <div className="flex justify-between items-center">
                       <h3 className="text-lg font-bold tracking-tight group-hover:text-primary transition-colors">{p.title}</h3>
-                      <div className="flex items-center gap-1 text-orange-500 text-[10px] font-bold"><Star className="w-3 h-3 fill-current" /> {p.rating || "5.0"}</div>
+                      <div className="flex items-center gap-1 text-orange-500 text-[10px] font-bold" title={ratings[p.id]?.count ? `${ratings[p.id].count} review(s)` : "No reviews yet"}>
+                        <Star className="w-3 h-3 fill-current" /> {liveRating(p)}
+                      </div>
                     </div>
                     <p className="text-[10px] text-muted-foreground font-medium uppercase flex items-center gap-1.5"><MapPin className="w-3 h-3 text-primary/60" /> {p.address}</p>
                   </div>
                 </motion.div>
               ))}
             </div>
-
-            <aside className="space-y-4">
+            <aside className="md:sticky md:top-24 self-start space-y-2">
               <div className="flex items-center justify-between">
-                <h3 className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-primary" /> Property Map
+                <h3 className="text-[9px] font-black uppercase tracking-[0.25em] flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-primary" /> Live Map
                 </h3>
-                <span className="text-[10px] text-muted-foreground font-bold">{mapProps.length} Units</span>
+                <span className="text-[9px] font-bold text-muted-foreground uppercase">{mapProps.length} pins</span>
               </div>
               <PropertyMap
-                height="400px"
-                markers={mapProps
-                  .filter(p => p.latitude && p.longitude) // Safety: Don't pass null coords to map
-                  .map((p) => ({
-                    id: p.id,
-                    lat: p.latitude!,
-                    lng: p.longitude!,
-                    title: p.title,
-                    rent: p.rent,
-                    isEmergency: p.is_emergency,
-                    onClick: () => navigate(`/property/${p.id}`),
-                    detailHref: `/property/${p.id}`,
-                  })) as MapMarkerData[]}
+                height="320px"
+                markers={mapProps.map((p) => ({
+                  id: p.id,
+                  lat: p.latitude!,
+                  lng: p.longitude!,
+                  title: p.title,
+                  rent: p.rent,
+                  isEmergency: p.is_emergency,
+                  onClick: () => navigate(`/property/${p.id}`),
+                  detailHref: `/property/${p.id}`,
+                })) as MapMarkerData[]}
               />
+              {mapProps.length === 0 && (
+                <p className="text-[10px] font-bold uppercase text-muted-foreground text-center py-2">No mapped properties yet — landlords can add coordinates.</p>
+              )}
             </aside>
           </div>
         )}
