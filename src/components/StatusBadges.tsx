@@ -1,5 +1,5 @@
 import React from "react";
-import { Siren, CheckCircle2, Lock, HelpCircle } from "lucide-react";
+import * as Icons from "lucide-react";
 
 export const EmergencyBadge = ({ size = "sm" }: { size?: "xs" | "sm" | "md" }) => {
   const cls = 
@@ -9,7 +9,7 @@ export const EmergencyBadge = ({ size = "sm" }: { size?: "xs" | "sm" | "md" }) =
     
   return (
     <span className={`inline-flex items-center gap-1 rounded-md font-black uppercase tracking-widest bg-red-500 text-white shadow-md ${cls}`}>
-      <Siren className={size === "md" ? "w-3.5 h-3.5" : "w-3 h-3"} /> 
+      <Icons.Siren className={size === "md" ? "w-3.5 h-3.5" : "w-3 h-3"} /> 
       <span>Emergency</span>
     </span>
   );
@@ -18,36 +18,24 @@ export const EmergencyBadge = ({ size = "sm" }: { size?: "xs" | "sm" | "md" }) =
 export const AvailabilityPill = ({ status }: { status?: string | null }) => {
   const s = (status || "available").toLowerCase();
   
-  // Use a switch or a direct mapping to ensure React components are stable
-  const getStatusData = (statusStr: string) => {
-    switch (statusStr) {
-      case "booked":
-        return { 
-          label: "Booked", 
-          cls: "bg-amber-500/10 text-amber-600 border-amber-500/30", 
-          Icon: Lock 
-        };
-      case "unavailable":
-        return { 
-          label: "Unavailable", 
-          cls: "bg-zinc-500/10 text-zinc-600 border-zinc-500/30", 
-          Icon: Lock 
-        };
-      case "available":
-      default:
-        return { 
-          label: "Available", 
-          cls: "bg-green-500/10 text-green-600 border-green-500/30", 
-          Icon: CheckCircle2 
-        };
-    }
-  };
+  // Directly selecting the icon component to avoid destructuring errors
+  let IconComponent = Icons.CheckCircle2;
+  let label = "Available";
+  let colorCls = "bg-green-500/10 text-green-600 border-green-500/30";
 
-  const { label, cls, Icon } = getStatusData(s);
+  if (s === "booked") {
+    IconComponent = Icons.Lock;
+    label = "Booked";
+    colorCls = "bg-amber-500/10 text-amber-600 border-amber-500/30";
+  } else if (s === "unavailable") {
+    IconComponent = Icons.Lock;
+    label = "Unavailable";
+    colorCls = "bg-zinc-500/10 text-zinc-600 border-zinc-500/30";
+  }
 
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest border ${cls}`}>
-      {Icon && <Icon className="w-3 h-3" />} 
+    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest border ${colorCls}`}>
+      <IconComponent className="w-3 h-3" />
       <span>{label}</span>
     </span>
   );
