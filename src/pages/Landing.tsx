@@ -80,11 +80,11 @@ const Landing = () => {
       if (session?.user) {
         setIsLoggedIn(true);
         
-        const { data: roleData } = await supabase
+        const { data: roleData, error: roleError } = await supabase
           .from("user_roles")
           .select("role")
           .eq("user_id", session.user.id)
-          .single();
+          .maybeSingle();
 
         if (roleData?.role === "admin") {
           setUserRole("admin");
@@ -134,24 +134,28 @@ const Landing = () => {
   };
 
   const getRatings = async () => {
-    const { data, error } = await supabase.from("property_ratings").select("property_id, rating");
-    
-    if (error) {
-      console.error("Error fetching ratings:", error);
-      return;
-    }
+    try {
+      const { data, error } = await supabase
+        .from("property_ratings")
+        .select("property_id, rating");
+      
+      if (error) throw error;
 
-    const map: Record<string, { sum: number; count: number }> = {};
-    (data || []).forEach((r: any) => {
-      if (!map[r.property_id]) map[r.property_id] = { sum: 0, count: 0 };
-      map[r.property_id].sum += Number(r.rating) || 0;
-      map[r.property_id].count += 1;
-    });
-    const agg: Record<string, { avg: number; count: number }> = {};
-    Object.entries(map).forEach(([k, v]) => {
-      agg[k] = { avg: v.count > 0 ? v.sum / v.count : 0, count: v.count };
-    });
-    setRatings(agg);
+      const map: Record<string, { sum: number; count: number }> = {};
+      (data || []).forEach((r: any) => {
+        if (!map[r.property_id]) map[r.property_id] = { sum: 0, count: 0 };
+        map[r.property_id].sum += Number(r.rating) || 0;
+        map[r.property_id].count += 1;
+      });
+
+      const agg: Record<string, { avg: number; count: number }> = {};
+      Object.entries(map).forEach(([k, v]) => {
+        agg[k] = { avg: v.count > 0 ? v.sum / v.count : 0, count: v.count };
+      });
+      setRatings(agg);
+    } catch (err) {
+      console.error("Ratings fetch error:", err);
+    }
   };
 
   const liveRating = (p: DBProperty) => {
@@ -252,6 +256,7 @@ const Landing = () => {
         )}
       </AnimatePresence>
 
+      {/* Hero Section */}
       <section className="relative min-h-[75vh] flex items-center justify-center px-4 pt-16 pb-24 overflow-hidden bg-slate-950">
         <video 
           autoPlay 
@@ -297,6 +302,7 @@ const Landing = () => {
         </div>
       </section>
 
+      {/* Floating Filter Cards */}
       <div className="container max-w-5xl mx-auto px-4 -mt-16 relative z-30">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {filters.map((f) => (
@@ -317,6 +323,7 @@ const Landing = () => {
         </div>
       </div>
 
+      {/* Marketplace Section */}
       <main className="container max-w-6xl mx-auto px-4 py-20 space-y-10">
         <div className="flex flex-col md:flex-row justify-between items-end gap-4 border-b border-border/50 pb-8">
           <div className="space-y-1">
@@ -367,9 +374,9 @@ const Landing = () => {
                 if (sortBy === "price-asc") arr.sort((a, b) => a.rent - b.rent);
                 else if (sortBy === "price-desc") arr.sort((a, b) => b.rent - a.rent);
                 else if (sortBy === "rating") arr.sort((a, b) => {
-                  const ratingA = Number(liveRating(a));
-                  const ratingB = Number(liveRating(b));
-                  return ratingB - ratingA;
+                  const rA = Number(liveRating(a));
+                  const rB = Number(liveRating(b));
+                  return rB - rA;
                 });
                 return arr;
               })().map((p, i) => (
