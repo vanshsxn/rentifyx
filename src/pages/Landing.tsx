@@ -331,7 +331,12 @@ const Landing = () => {
                 let arr = emergencyOnly ? list.filter((p) => p.is_emergency) : [...list];
                 if (sortBy === "price-asc") arr.sort((a, b) => a.rent - b.rent);
                 else if (sortBy === "price-desc") arr.sort((a, b) => b.rent - a.rent);
-                else if (sortBy === "rating") arr.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+                else if (sortBy === "rating") {
+                  arr.sort((a, b) => {
+                    const getR = (p: DBProperty) => ratings[p.id]?.count > 0 ? ratings[p.id].avg : (p.rating || 0);
+                    return getR(b) - getR(a);
+                  });
+                }
                 return arr;
               })().map((p, i) => (
                 <motion.div key={p.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="group cursor-pointer space-y-4" onClick={() => navigate(`/property/${p.id}`)}>
