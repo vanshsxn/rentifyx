@@ -1,19 +1,86 @@
-import { useState, useEffect } from "react";import { supabase } from "@/integrations/supabase/client";import { useNavigate } from "react-router-dom";import { motion } from "framer-motion";import { Mail, Lock, ArrowLeft, Eye, EyeOff } from "lucide-react";import { toast } from "sonner";import { useAuth } from "@/contexts/AuthContext";
-const Auth = () => {const [isLogin, setIsLogin] = useState(true);const [email, setEmail] = useState("");const [password, setPassword] = useState("");const [showPassword, setShowPassword] = useState(false);const [loading, setLoading] = useState(false);const [selectedRole, setSelectedRole] = useState<"landlord" | "tenant">("tenant");const navigate = useNavigate();const { user } = useAuth();
-  const MASTER_ADMIN_EMAIL = "vanshsxn2006@gmail.com";useEffect(() => {if (user) {checkRoleAndRedirect(user.id, user.email);}}, [user]);const checkRoleAndRedirect = async (userId: string, userEmail?: string) => {if (userEmail === MASTER_ADMIN_EMAIL) {navigate("/admin", { replace: true });return;}
-    const { data: roleData } = await supabase .from("user_roles") .select("role").eq("user_id", userId).single();
-    if (!roleData) {navigate(selectedRole === "landlord" ? "/landlord" : "/tenant", { replace: true }); return;}
-    if (roleData.role === "admin") navigate("/admin", { replace: true });else if (roleData.role === "landlord") navigate("/landlord", { replace: true });else navigate("/tenant", { replace: true });};
-  const handleSubmit = async (e: React.FormEvent) => {e.preventDefault();setLoading(true);if (isLogin) {
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { Mail, Lock, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+
+const Auth = () => {
+  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<"landlord" | "tenant">("tenant");
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const MASTER_ADMIN_EMAIL = "vanshsxn2006@gmail.com";
+
+  useEffect(() => {
+    if (user) {
+      checkRoleAndRedirect(user.id, user.email);
+    }
+  }, [user]);
+
+  const checkRoleAndRedirect = async (userId: string, userEmail?: string) => {
+    if (userEmail === MASTER_ADMIN_EMAIL) {
+      navigate("/admin", { replace: true });
+      return;
+    }
+
+    // 1. Try to fetch from user_roles table
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .single();
+
+    if (roleData) {
+      if (roleData.role === "admin") navigate("/admin", { replace: true });
+      else if (roleData.role === "landlord") navigate("/landlord", { replace: true });
+      else navigate("/tenant", { replace: true });
+      return;
+    }
+
+    // 2. Fallback: Check user_metadata (useful for existing accounts or sync issues)
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    const metaRole = currentUser?.user_metadata?.role;
+
+    if (metaRole === "landlord") {
+      navigate("/landlord", { replace: true });
+    } else if (metaRole === "admin") {
+      navigate("/admin", { replace: true });
+    } else if (metaRole === "tenant") {
+      navigate("/tenant", { replace: true });
+    } else {
+      // 3. Last resort: use the toggle state (only happens on first login/signup)
+      navigate(selectedRole === "landlord" ? "/landlord" : "/tenant", { replace: true });
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    if (isLogin) {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {toast.error("Login failed", { description: error.message });} else if (data.user) {toast.success("Welcome back!"); await checkRoleAndRedirect(data.user.id, data.user.email);}
-    } else {const { data, error } = await supabase.auth.signUp({
+      if (error) {
+        toast.error("Login failed", { description: error.message });
+      } else if (data.user) {
+        toast.success("Welcome back!");
+        await checkRoleAndRedirect(data.user.id, data.user.email);
+      }
+    } else {
+      const role = email === MASTER_ADMIN_EMAIL ? "admin" : selectedRole;
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: window.location.origin,
           data: {
-            role: email === MASTER_ADMIN_EMAIL ? "admin" : selectedRole,
+            role: role,
             full_name: email.split("@")[0],
           },
         },
@@ -22,8 +89,7 @@ const Auth = () => {const [isLogin, setIsLogin] = useState(true);const [email, s
       if (error) {
         toast.error("Signup failed", { description: error.message });
       } else if (data.user) {
-        // Insert role into user_roles table
-        const role = email === MASTER_ADMIN_EMAIL ? "admin" : selectedRole;
+        // Create entry in user_roles table
         await supabase.from("user_roles").upsert({
           user_id: data.user.id,
           role: role,
@@ -31,7 +97,7 @@ const Auth = () => {const [isLogin, setIsLogin] = useState(true);const [email, s
 
         toast.success("Account created! Redirecting...");
         setTimeout(() => {
-          navigate(selectedRole === "landlord" ? "/landlord" : "/tenant", { replace: true });
+          checkRoleAndRedirect(data.user.id, data.user.email);
         }, 1500);
       }
     }
@@ -68,6 +134,7 @@ const Auth = () => {const [isLogin, setIsLogin] = useState(true);const [email, s
               {(["tenant", "landlord"] as const).map((r) => (
                 <button
                   key={r}
+                  type="button"
                   onClick={() => setSelectedRole(r)}
                   className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
                     selectedRole === r
@@ -91,7 +158,7 @@ const Auth = () => {const [isLogin, setIsLogin] = useState(true);const [email, s
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="vansh@example.com"
+                  placeholder="name@example.com"
                   className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-border bg-background text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                 />
               </div>
@@ -131,6 +198,7 @@ const Auth = () => {const [isLogin, setIsLogin] = useState(true);const [email, s
 
           <div className="text-center">
             <button
+              type="button"
               onClick={() => setIsLogin(!isLogin)}
               className="text-xs text-muted-foreground hover:text-primary transition-colors"
             >

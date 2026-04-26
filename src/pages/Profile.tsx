@@ -12,7 +12,7 @@ import { toast } from "sonner";
 
 const ProfileDashboard = () => {
   const navigate = useNavigate();
-  const { user, userRole, signOut } = useAuth(); // Accessing global user state
+  const { user, userRole, signOut } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -25,7 +25,6 @@ const ProfileDashboard = () => {
     avatar_url: "",
   });
 
-  // 1. Fetch profile only when the 'user' from context is available
   useEffect(() => {
     if (user) {
       getProfile();
@@ -35,12 +34,14 @@ const ProfileDashboard = () => {
   const getProfile = async () => {
     try {
       setLoading(true);
-      // No need to fetch authUser again, use 'user.id' from useAuth()
+      // Use maybeSingle() to handle cases where the profile row doesn't exist yet
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", user?.id)
-        .single();
+        .maybeSingle();
+
+      if (error) throw error;
 
       if (data) {
         setProfile({
@@ -49,9 +50,16 @@ const ProfileDashboard = () => {
           email: user?.email || "",
           avatar_url: data.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}`,
         });
+      } else {
+        // Fallback for new users without a profile record
+        setProfile(prev => ({
+          ...prev,
+          email: user?.email || "",
+          avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}`,
+        }));
       }
-    } catch (err) {
-      console.error("Error loading profile:", err);
+    } catch (err: any) {
+      console.error("Error loading profile:", err.message);
     } finally {
       setLoading(false);
     }
@@ -81,10 +89,14 @@ const ProfileDashboard = () => {
         .from("avatars")
         .getPublicUrl(filePath);
 
+      // Use upsert here too just in case the profile doesn't exist
       const { error: updateError } = await supabase
         .from("profiles")
-        .update({ avatar_url: publicUrl })
-        .eq("id", user.id);
+        .upsert({ 
+          id: user.id,
+          avatar_url: publicUrl,
+          updated_at: new Date().toISOString()
+        });
 
       if (updateError) throw updateError;
 
@@ -100,7 +112,6 @@ const ProfileDashboard = () => {
   const handleUpdate = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     
-    // Safety check using global context user
     if (!user?.id) {
       toast.error("User session not found");
       return;
@@ -108,14 +119,15 @@ const ProfileDashboard = () => {
 
     setSaving(true);
     try {
+      // Changed .update() to .upsert() to handle missing rows
       const { error } = await supabase
         .from("profiles")
-        .update({
+        .upsert({
+          id: user.id, // Mandatory for upsert
           full_name: profile.full_name,
           phone: profile.phone,
           updated_at: new Date().toISOString(),
-        })
-        .eq("id", user.id);
+        }, { onConflict: 'id' });
 
       if (error) throw error;
 
@@ -125,6 +137,7 @@ const ProfileDashboard = () => {
       
     } catch (error: any) {
       toast.error("Update failed: " + error.message);
+      console.error("Save error:", error);
     } finally {
       setSaving(false);
     }
@@ -136,7 +149,7 @@ const ProfileDashboard = () => {
     navigate("/");
   };
 
-  if (loading && !profile.full_name) {
+  if (loading && !profile.email) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-background">
         <Loader2 className="w-10 h-10 animate-spin text-primary" />
@@ -272,7 +285,7 @@ const ProfileDashboard = () => {
                       type="email"
                       className="w-full bg-secondary/10 border-none rounded-2xl py-4 pl-12 pr-6 text-sm font-bold opacity-50 cursor-not-allowed min-h-[52px]"
                       value={profile.email}
-                      disabled
+                      readOnly
                     />
                   </div>
                 </div>
