@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import PropertyMap, { MapMarkerData } from "@/components/PropertyMap";
 import { useNavigate } from "react-router-dom";
-import { MapPin, Navigation, Loader2, Star, Siren, Building2, CheckCircle2 } from "lucide-react";
+import { MapPin, Navigation, Loader2, Star, Siren, Building2, CheckCircle2, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { EmergencyBadge, AvailabilityPill } from "@/components/StatusBadges";
 
@@ -62,9 +62,24 @@ const NearMe = () => {
 
   const getLocation = () => {
     if (!navigator.geolocation) return toast.error("Geolocation not supported");
+    toast.loading("Getting your location…", { id: "geo" });
     navigator.geolocation.getCurrentPosition(
-      (pos) => setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => toast.error("Could not get your location — showing all properties on map")
+      (pos) => {
+        setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        toast.success("Location found", { id: "geo" });
+      },
+      (err) => {
+        const msg =
+          err.code === err.PERMISSION_DENIED
+            ? "Location permission denied. Enable it in your browser settings."
+            : err.code === err.POSITION_UNAVAILABLE
+            ? "Location unavailable right now. Try again outdoors or with Wi-Fi."
+            : err.code === err.TIMEOUT
+            ? "Location request timed out. Please retry."
+            : "Could not get your location.";
+        toast.error(msg, { id: "geo" });
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     );
   };
 
@@ -167,6 +182,21 @@ const NearMe = () => {
                 <span className="text-sm font-black text-primary">₹{p.rent.toLocaleString()}</span>
                 {userLoc && p.dist !== undefined && <span className="text-[10px] font-black text-muted-foreground">{p.dist.toFixed(1)}km</span>}
               </div>
+              <a
+                href={
+                  userLoc
+                    ? `https://www.google.com/maps/dir/?api=1&origin=${userLoc.lat},${userLoc.lng}&destination=${p.latitude},${p.longitude}&travelmode=driving`
+                    : `https://www.google.com/maps/search/?api=1&query=${p.latitude},${p.longitude}`
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="mt-3 flex items-center justify-center gap-1.5 w-full py-2 rounded-lg bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-primary-foreground transition-colors"
+              >
+                <Navigation className="w-3 h-3" />
+                {userLoc ? "Directions" : "Open in Maps"}
+                <ExternalLink className="w-3 h-3" />
+              </a>
             </div>
           </button>
         ))}

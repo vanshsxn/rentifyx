@@ -8,6 +8,8 @@ import { motion, AnimatePresence } from "framer-motion";import { useSearchParams
     const { data: props, error } = await supabase.from("properties").select("*").order("created_at", { ascending: false });
     if (!error && props) setProperties(props);setLoading(false);};
   useEffect(() => {if (!properties.length) return;let pool = [...properties];
+    const emergencyOnly = searchParams.get("emergency") === "true";
+    if (emergencyOnly) pool = pool.filter((p) => p.is_emergency);
     if (selectedTags.length > 0) {pool = pool.filter(p => {const combined = [...(p.features || []), ...(p.tags || [])];return selectedTags.every(tag => combined.includes(tag));});}
     const maxRentParam = searchParams.get("maxRent");const numericQuery = !isNaN(Number(searchQuery)) && searchQuery !== "" ? Number(searchQuery) : null;const budgetLimit = numericQuery || (maxRentParam ? Number(maxRentParam) : null);
     if (budgetLimit) {// 1. Find Exact Price Matches 

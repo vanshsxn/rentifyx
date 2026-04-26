@@ -1,19 +1,21 @@
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  ArrowRight, 
-  Sparkles, 
-  Star, 
-  MapPin, 
-  Wallet, 
+  ArrowRight,
+  Sparkles,
+  Star,
+  MapPin,
+  Wallet,
   Siren,
-  TrendingDown, 
-  X, 
-  Zap, 
-  IndianRupee, 
+  TrendingDown,
+  X,
+  Zap,
+  IndianRupee,
   LayoutDashboard,
   LogIn,
-  Shield 
+  Shield,
+  Award,
+  ArrowDownNarrowWide
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,10 +49,16 @@ const Landing = () => {
   const [emergencyOnly, setEmergencyOnly] = useState<boolean>(
     () => typeof window !== "undefined" && localStorage.getItem("featured_emergency_only") === "1"
   );
+  const [sortBy, setSortBy] = useState<"default" | "price-asc" | "price-desc" | "rating">(
+    () => (typeof window !== "undefined" ? (localStorage.getItem("featured_sort") as any) : null) || "default"
+  );
 
   useEffect(() => {
     localStorage.setItem("featured_emergency_only", emergencyOnly ? "1" : "0");
   }, [emergencyOnly]);
+  useEffect(() => {
+    localStorage.setItem("featured_sort", sortBy);
+  }, [sortBy]);
   
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [tempBudget, setTempBudget] = useState("");
@@ -287,19 +295,39 @@ const Landing = () => {
       <main className="container max-w-6xl mx-auto px-4 py-20 space-y-10">
         <div className="flex flex-col md:flex-row justify-between items-end gap-4 border-b border-border/50 pb-8">
           <div className="space-y-1">
-            <h2 className="text-3xl font-black tracking-tight uppercase">Featured Units</h2>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h2 className="text-3xl font-black tracking-tight uppercase">Featured Units</h2>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest">
+                <Award className="w-3 h-3" /> {list.length}
+              </span>
+            </div>
             <p className="text-[10px] text-primary font-bold uppercase tracking-[0.3em]">High-Performance Living</p>
           </div>
-          <button
-            onClick={() => setEmergencyOnly((v) => !v)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
-              emergencyOnly
-                ? "bg-red-500 text-white border-red-500 shadow-md"
-                : "bg-card text-muted-foreground border-border hover:border-red-500/50"
-            }`}
-          >
-            <Siren className="w-3.5 h-3.5" /> Emergency Only
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative">
+              <ArrowDownNarrowWide className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="pl-9 pr-3 py-2.5 rounded-xl bg-card border border-border text-[10px] font-black uppercase tracking-widest cursor-pointer hover:border-primary/50 transition-all"
+              >
+                <option value="default">Sort: Default</option>
+                <option value="price-asc">Price: Low → High</option>
+                <option value="price-desc">Price: High → Low</option>
+                <option value="rating">Rating</option>
+              </select>
+            </div>
+            <button
+              onClick={() => setEmergencyOnly((v) => !v)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
+                emergencyOnly
+                  ? "bg-red-500 text-white border-red-500 shadow-md"
+                  : "bg-card text-muted-foreground border-border hover:border-red-500/50"
+              }`}
+            >
+              <Siren className="w-3.5 h-3.5" /> Emergency Only
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -307,17 +335,24 @@ const Landing = () => {
              <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr,280px] gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-[1fr,280px] gap-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {(emergencyOnly ? list.filter((p) => p.is_emergency) : list).map((p, i) => (
+              {(() => {
+                let arr = emergencyOnly ? list.filter((p) => p.is_emergency) : [...list];
+                if (sortBy === "price-asc") arr.sort((a, b) => a.rent - b.rent);
+                else if (sortBy === "price-desc") arr.sort((a, b) => b.rent - a.rent);
+                else if (sortBy === "rating") arr.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+                return arr;
+              })().map((p, i) => (
                 <motion.div key={p.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="group cursor-pointer space-y-4" onClick={() => navigate(`/property/${p.id}`)}>
                   <div className="relative aspect-[4/3] rounded-[2rem] overflow-hidden shadow-md group-hover:shadow-xl transition-all duration-500">
                     <img src={p.image_url || "/placeholder.svg"} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={p.title} />
-                    {p.is_emergency && (
-                      <div className="absolute top-4 left-4">
-                        <EmergencyBadge size="md" />
-                      </div>
-                    )}
+                    <div className="absolute top-4 left-4 flex flex-col gap-1.5 items-start">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-primary text-primary-foreground text-[9px] font-black uppercase tracking-widest shadow-md">
+                        <Award className="w-3 h-3" /> Featured
+                      </span>
+                      {p.is_emergency && <EmergencyBadge size="md" />}
+                    </div>
                     <div className="absolute top-4 right-4 bg-background/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[11px] font-bold text-primary">₹{p.rent.toLocaleString()}</div>
                   </div>
                   <div className="px-2 space-y-1">
@@ -330,7 +365,7 @@ const Landing = () => {
                 </motion.div>
               ))}
             </div>
-            <aside className="lg:sticky lg:top-24 self-start space-y-2">
+            <aside className="md:sticky md:top-24 self-start space-y-2">
               <div className="flex items-center justify-between">
                 <h3 className="text-[9px] font-black uppercase tracking-[0.25em] flex items-center gap-1.5">
                   <MapPin className="w-3.5 h-3.5 text-primary" /> Live Map
