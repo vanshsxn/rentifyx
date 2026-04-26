@@ -52,25 +52,32 @@ const Chat = () => {
     setLoading(true);
 
     // If linking from property detail with a specific user, ensure conversation exists
-    if (targetUserId && targetUserId !== user.id) {
-      const { data: existing, error: existingError } = await supabase
+    if (targetUserId && targetUserId !== user.id && targetUserId !== "undefined" && targetUserId !== "null") {
+      const { data: userConvs, error: existingError } = await supabase
         .from("conversations")
         .select("*")
-        .or(`and(participant_one.eq.${user.id},participant_two.eq.${targetUserId}),and(participant_one.eq.${targetUserId},participant_two.eq.${user.id})`)
-        .maybeSingle();
+        .or(`participant_one.eq.${user.id},participant_two.eq.${user.id}`);
 
       if (existingError) {
         console.error("Error finding chat:", existingError);
       }
 
+      const existing = (userConvs || []).find(c => 
+        (c.participant_one === user.id && c.participant_two === targetUserId) ||
+        (c.participant_one === targetUserId && c.participant_two === user.id)
+      );
+
       if (!existing) {
+        const cleanPropertyId = propertyId && propertyId !== "undefined" && propertyId !== "null" ? propertyId : null;
+        
         const { error: insertError } = await supabase.from("conversations").insert({
           participant_one: user.id,
           participant_two: targetUserId,
-          property_id: propertyId,
+          property_id: cleanPropertyId,
         });
+        
         if (insertError) {
-          toast.error("Could not create chat. RLS/Schema mismatch.");
+          toast.error("Error starting chat.");
           console.error("Chat insert failed:", insertError);
         }
       }
