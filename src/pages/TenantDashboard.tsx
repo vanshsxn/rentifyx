@@ -31,9 +31,10 @@ const TenantDashboard = () => {
   
   const isOptimized = searchParams.get("optimize") === "true";
   const hasMaxRent = searchParams.get("maxRent");
+  const isEmergency = searchParams.get("emergency") === "true";
   
   const [activeTab, setActiveTab] = useState<"discover" | "overview">(
-    isOptimized || hasMaxRent ? "discover" : "overview"
+    isOptimized || hasMaxRent || isEmergency ? "discover" : "overview"
   );
   const [ratings, setRatings] = useState<Record<string, { avg: number; count: number }>>({});
 
