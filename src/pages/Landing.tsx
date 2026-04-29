@@ -66,27 +66,40 @@ const Landing = () => {
   const [tempBudget, setTempBudget] = useState("");
 
   useEffect(() => {
-    getFeatured();
     getMapped();
     getRatings();
   }, []);
 
-  const getFeatured = async () => {
-    let { data, error } = await supabase
-      .from("properties")
-      .select("*")
-      .eq("is_featured", true)
-      .limit(6);
+  useEffect(() => {
+    getFeatured();
+  }, [emergencyOnly]);
 
-    if (error || !data || data.length === 0) {
-      const { data: topRated } = await supabase
+  const getFeatured = async () => {
+    setLoading(true);
+    if (emergencyOnly) {
+      let { data } = await supabase
         .from("properties")
         .select("*")
-        .order("rating", { ascending: false })
+        .eq("is_emergency", true)
         .limit(6);
-      setList(topRated || []);
+      setList(data || []);
     } else {
-      setList(data);
+      let { data, error } = await supabase
+        .from("properties")
+        .select("*")
+        .eq("is_featured", true)
+        .limit(6);
+
+      if (error || !data || data.length === 0) {
+        const { data: topRated } = await supabase
+          .from("properties")
+          .select("*")
+          .order("rating", { ascending: false })
+          .limit(6);
+        setList(topRated || []);
+      } else {
+        setList(data);
+      }
     }
     setLoading(false);
   };
