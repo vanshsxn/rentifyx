@@ -29,10 +29,12 @@ const TenantDashboard = () => {
   const [editName, setEditName] = useState("");
   const [editAvatar, setEditAvatar] = useState("");
   
-  const [activeTab, setActiveTab] = useState<"discover" | "overview">("overview");
-
   const isOptimized = searchParams.get("optimize") === "true";
   const hasMaxRent = searchParams.get("maxRent");
+  
+  const [activeTab, setActiveTab] = useState<"discover" | "overview">(
+    isOptimized || hasMaxRent ? "discover" : "overview"
+  );
 
   const getPageTitle = () => {
     if (activeTab === "overview") return "My Tenant Hub";

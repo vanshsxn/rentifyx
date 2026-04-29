@@ -124,16 +124,6 @@ const Properties = () => {
     fetchProperties();
   }, [maxRentParam, tagFilter]);
 
-  useEffect(() => {
-    if (maxRentParam && searchParams.get("optimize") === "true") {
-      const budget = parseInt(maxRentParam);
-      if (budget > 0) {
-        setActiveBudget(budget);
-        setBudgetInput(maxRentParam);
-      }
-    }
-  }, [maxRentParam, searchParams]);
-
   const optimizedResults = useMemo(() => {
     if (!activeBudget) return null;
     const withinBudget = properties.filter(p => p.rent <= activeBudget);

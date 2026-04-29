@@ -126,7 +126,7 @@ const Landing = () => {
   const handleBudgetOptimization = () => {
     if (!tempBudget) return toast.error("Enter a budget!");
     setShowBudgetModal(false);
-    navigate(`/properties?maxRent=${tempBudget}&optimize=true`);
+    navigate(`/tenant?maxRent=${tempBudget}&optimize=true`);
   };
 
   const handleBrowse = () => {
