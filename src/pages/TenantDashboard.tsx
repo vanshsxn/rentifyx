@@ -35,6 +35,7 @@ const TenantDashboard = () => {
   const [activeTab, setActiveTab] = useState<"discover" | "overview">(
     isOptimized || hasMaxRent ? "discover" : "overview"
   );
+  const [ratings, setRatings] = useState<Record<string, { avg: number; count: number }>>({});
 
   const getPageTitle = () => {
     if (activeTab === "overview") return "My Tenant Hub";
@@ -77,7 +78,28 @@ const TenantDashboard = () => {
         if (count) setUnreadCount(count);
       }
     }
+    // Fetch Ratings
+    const { data: ratingData } = await supabase.from("property_ratings").select("property_id, rating");
+    const map: Record<string, { sum: number; count: number }> = {};
+    (ratingData || []).forEach((r: any) => {
+      if (!map[r.property_id]) map[r.property_id] = { sum: 0, count: 0 };
+      map[r.property_id].sum += Number(r.rating) || 0;
+      map[r.property_id].count += 1;
+    });
+    const agg: Record<string, { avg: number; count: number }> = {};
+    Object.entries(map).forEach(([k, v]) => {
+      agg[k] = { avg: v.count > 0 ? v.sum / v.count : 0, count: v.count };
+    });
+    setRatings(agg);
+
     setLoading(false);
+  };
+
+  const liveRating = (p: any) => {
+    const r = ratings[p.id];
+    if (r && r.count > 0) return r.avg.toFixed(1);
+    if (p.rating && p.rating > 0) return Number(p.rating).toFixed(1);
+    return "0.0";
   };
 
   useEffect(() => {
@@ -179,7 +201,7 @@ const TenantDashboard = () => {
                 </p>
               </div>
               <div className="flex items-center gap-1 bg-orange-500/10 text-orange-600 px-2 py-1 rounded-lg text-[10px] font-black">
-                 <Star className="w-3 h-3 fill-current" /> {p.rating?.toFixed(1) || "0.0"}
+                 <Star className="w-3 h-3 fill-current" /> {liveRating(p)}
               </div>
             </div>
           </div>

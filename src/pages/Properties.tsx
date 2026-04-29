@@ -94,6 +94,7 @@ const Properties = () => {
   const [loading, setLoading] = useState(true);
   const [budgetInput, setBudgetInput] = useState("");
   const [activeBudget, setActiveBudget] = useState<number | null>(null);
+  const [ratings, setRatings] = useState<Record<string, { avg: number; count: number }>>({});
 
   const maxRentParam = searchParams.get("maxRent");
   const tagFilter = searchParams.get("tag");
@@ -122,7 +123,30 @@ const Properties = () => {
       setLoading(false);
     };
     fetchProperties();
+
+    const getRatings = async () => {
+      const { data } = await supabase.from("property_ratings").select("property_id, rating");
+      const map: Record<string, { sum: number; count: number }> = {};
+      (data || []).forEach((r: any) => {
+        if (!map[r.property_id]) map[r.property_id] = { sum: 0, count: 0 };
+        map[r.property_id].sum += Number(r.rating) || 0;
+        map[r.property_id].count += 1;
+      });
+      const agg: Record<string, { avg: number; count: number }> = {};
+      Object.entries(map).forEach(([k, v]) => {
+        agg[k] = { avg: v.count > 0 ? v.sum / v.count : 0, count: v.count };
+      });
+      setRatings(agg);
+    };
+    getRatings();
   }, [maxRentParam, tagFilter]);
+
+  const liveRating = (p: DBProperty) => {
+    const r = ratings[p.id];
+    if (r && r.count > 0) return r.avg.toFixed(1);
+    if (p.rating && p.rating > 0) return Number(p.rating).toFixed(1);
+    return "0.0";
+  };
 
   const optimizedResults = useMemo(() => {
     if (!activeBudget) return null;
@@ -228,7 +252,9 @@ const Properties = () => {
                       <p className="text-[11px] font-black uppercase truncate text-background">{p.title}</p>
                       <p className="text-[10px] font-bold text-primary">₹{p.rent.toLocaleString()}</p>
                     </div>
-                    <Star className="w-3 h-3 fill-orange-500 text-orange-500" />
+                    <div className="flex items-center gap-1 text-orange-500 text-[10px] font-bold">
+                      <Star className="w-3 h-3 fill-orange-500 text-orange-500" /> {liveRating(p as any)}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -262,7 +288,7 @@ const Properties = () => {
                   <div className="flex justify-between items-start">
                     <h3 className="font-black uppercase text-sm tracking-tighter text-foreground">{p.title}</h3>
                     <div className="flex items-center gap-1 text-orange-500 font-bold text-[10px]">
-                      <Star className="w-3 h-3 fill-current" /> {p.rating || 0}
+                      <Star className="w-3 h-3 fill-current" /> {liveRating(p)}
                     </div>
                   </div>
                   <p className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1">
