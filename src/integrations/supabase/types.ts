@@ -164,6 +164,7 @@ export type Database = {
           has_vr: boolean | null
           id: string
           image_url: string | null
+          is_emergency: boolean | null
           is_featured: boolean | null
           landlord_id: string
           latitude: number | null
@@ -193,6 +194,7 @@ export type Database = {
           has_vr?: boolean | null
           id?: string
           image_url?: string | null
+          is_emergency?: boolean | null
           is_featured?: boolean | null
           landlord_id: string
           latitude?: number | null
@@ -222,6 +224,7 @@ export type Database = {
           has_vr?: boolean | null
           id?: string
           image_url?: string | null
+          is_emergency?: boolean | null
           is_featured?: boolean | null
           landlord_id?: string
           latitude?: number | null
@@ -267,6 +270,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "property_ratings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scheduled_visits: {
+        Row: {
+          created_at: string
+          id: string
+          landlord_id: string
+          landlord_response: string | null
+          notes: string | null
+          property_id: string
+          requested_at: string
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          landlord_id: string
+          landlord_response?: string | null
+          notes?: string | null
+          property_id: string
+          requested_at: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          landlord_id?: string
+          landlord_response?: string | null
+          notes?: string | null
+          property_id?: string
+          requested_at?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_visits_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"

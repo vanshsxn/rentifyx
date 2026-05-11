@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, lazy, Suspense, memo } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,9 +11,7 @@ import DevToolsBlocker from "@/components/DevToolsBlocker";
 import MobileNav from "@/components/MobileNav";
 import { Loader2 } from "lucide-react";
 
-// --- 1. ADD THIS LAZY IMPORT ---
-const ProfileDashboard = lazy(() => import("@/pages/Profile")); 
-
+// Lazy chunks
 const Landing = lazy(() => import("@/pages/Landing"));
 const Properties = lazy(() => import("@/pages/Properties"));
 const PropertyDetail = lazy(() => import("@/pages/PropertyDetail"));
@@ -28,15 +26,26 @@ const Visits = lazy(() => import("@/pages/Visits"));
 const NearMe = lazy(() => import("@/pages/NearMe"));
 const Compare = lazy(() => import("@/pages/Compare"));
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
+const ProfileDashboard = lazy(() => import("@/pages/Profile"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,        // 1 min cache - reduce refetch storms
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
-const PageLoader = () => (
-  <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
-    <Loader2 className="w-10 h-10 text-primary animate-spin opacity-80" />
-    <p className="text-sm font-medium text-muted-foreground animate-pulse">Loading RentHelp...</p>
+const PageLoader = memo(() => (
+  <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-3">
+    <Loader2 className="w-8 h-8 text-primary animate-spin opacity-80" />
+    <p className="text-xs font-medium text-muted-foreground">Loading…</p>
   </div>
-);
+));
+PageLoader.displayName = "PageLoader";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -79,20 +88,14 @@ const AppContent = () => {
             </ProtectedRoute>
           }
         />
-        
-        {/* --- 2. ADD THE PROFILE ROUTE HERE --- */}
         <Route
           path="/profile"
           element={
             <ProtectedRoute>
-              {/* Wrapping in Layout keeps your sidebar/header consistent if needed */}
-              <Layout role={role} onRoleChange={setRole}>
-                <ProfileDashboard />
-              </Layout>
+              <Layout role={role} onRoleChange={setRole}><ProfileDashboard /></Layout>
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/tenant"
           element={
