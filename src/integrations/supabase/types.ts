@@ -164,6 +164,7 @@ export type Database = {
           has_vr: boolean | null
           id: string
           image_url: string | null
+          is_emergency: boolean | null
           is_featured: boolean | null
           landlord_id: string
           latitude: number | null
@@ -193,6 +194,7 @@ export type Database = {
           has_vr?: boolean | null
           id?: string
           image_url?: string | null
+          is_emergency?: boolean | null
           is_featured?: boolean | null
           landlord_id: string
           latitude?: number | null
@@ -222,6 +224,7 @@ export type Database = {
           has_vr?: boolean | null
           id?: string
           image_url?: string | null
+          is_emergency?: boolean | null
           is_featured?: boolean | null
           landlord_id?: string
           latitude?: number | null

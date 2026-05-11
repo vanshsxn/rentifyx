@@ -1,0 +1,1 @@
+ALTER TABLE public.properties ADD COLUMN IF NOT EXISTS is_emergency BOOLEAN DEFAULT false;
