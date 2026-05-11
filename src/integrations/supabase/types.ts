@@ -274,6 +274,53 @@ export type Database = {
           },
         ]
       }
+      scheduled_visits: {
+        Row: {
+          created_at: string
+          id: string
+          landlord_id: string
+          landlord_response: string | null
+          notes: string | null
+          property_id: string
+          requested_at: string
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          landlord_id: string
+          landlord_response?: string | null
+          notes?: string | null
+          property_id: string
+          requested_at: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          landlord_id?: string
+          landlord_response?: string | null
+          notes?: string | null
+          property_id?: string
+          requested_at?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_visits_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_requests: {
         Row: {
           created_at: string
