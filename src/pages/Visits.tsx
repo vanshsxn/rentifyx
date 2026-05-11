@@ -180,5 +180,4 @@ const Visits = () => {
     </div>
   );
 };
-
 export default Visits;

@@ -374,5 +374,4 @@ const TenantDashboard = () => {
     </div>
   );
 };
-
 export default TenantDashboard;

@@ -437,5 +437,4 @@ const LandlordDashboard = () => {
     </div>
   );
 };
-
 export default LandlordDashboard;

@@ -320,5 +320,4 @@ const ProfileDashboard = () => {
     </div>
   );
 };
-
 export default ProfileDashboard;

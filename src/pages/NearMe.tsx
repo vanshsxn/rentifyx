@@ -385,5 +385,4 @@ const NearMe = () => {
     </div>
   );
 };
-
 export default NearMe;

@@ -5,7 +5,6 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { Send, ArrowLeft, MessageCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
-
 interface Conversation {
   id: string;
   participant_one: string;
@@ -271,5 +270,4 @@ const Chat = () => {
     </div>
   );
 };
-
 export default Chat;
