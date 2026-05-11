@@ -12,5 +12,5 @@ Database: Utilizes MySQL for relational data storage including user profiles and
 Hashing: Used for identifying duplicate property listings in $O(1)$ time complexity.Max Heaps: Employed in the backend to rank properties based on user-submitted ratings.
 Input Validation: Verification of rental prices against local averages to identify potential fraudulent entries.
 # 4. DevelopmentThe project was developed by MV Studios Japan.
-Lead Developer: Vansh Saxena
-Project URL: rentifyx
+Lead Developer: Anu Rajput,jiya,Anshuman Bhardwaj,Vansh Saxena.
+Project URL: [rentifyx](https://rentifyx.onrender.com/)
