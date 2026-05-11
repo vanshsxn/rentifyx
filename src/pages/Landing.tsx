@@ -77,11 +77,8 @@ const Landing = () => {
   const getFeatured = async () => {
     setLoading(true);
     if (emergencyOnly) {
-      const { data } = await (supabase
-        .from("properties")
-        .select("*")
-        .eq("is_emergency", true)
-        .limit(6) as any);
+      const query: any = supabase.from("properties").select("*").eq("is_emergency", true).limit(6);
+      const { data } = await query;
       setList(data || []);
     } else {
       let { data, error } = await supabase
